@@ -1471,8 +1471,9 @@ namespace nogal {
 			}
 		}
 
-		// ejecuta un codigo RIND antes del final del proceso de la plantilla (ver mergefile)
-		private function InnerRind2php($sSource) {
+		// transforma un bloque de código RIND a formato PHP durante proceso de la plantilla
+		// cuando bEval es TRUE, retorna el resultado de la ejecución del código
+		private function InnerRind2php($sSource, $bEval=false) {
 			$aSource = $this->ProcessCode($sSource);
 			$sSource = $this->FixCode($aSource);
 			$aSource = null;
@@ -1506,10 +1507,14 @@ namespace nogal {
 				function($aMatchs) use ($sQUOTE) { return "{".\str_replace('"', $sQUOTE, $aMatchs[2])."}"; },
 				$sSource
 			);
-			
+			$sSource = "'".\str_replace(["<?php echo ", ";?>"], ["'.",".'"], $sSource)."'";
+
+			// evalua el código
+			if($bEval) { return eval(self::call()->EvalCode("return ".$sSource).";"); }
+
 			return $sSource;
 		}
-		
+
 		/** FUNCTION {
 			"name" : "ProcessCode", 
 			"type" : "private",
@@ -2565,12 +2570,19 @@ namespace nogal {
 		private function GetDataArgumentsMultiple($sString) {
 			$nCurly = \strpos($sString, "{");
 			$nSquare = \strpos($sString, "[");
-			if($nCurly===false && $nSquare===false) {
+			$bNut = (\strpos($sString, "\x12json>nut:")===0);
+			if(($nCurly===false && $nSquare===false) || $bNut) {
 				$sString = \str_replace(["\x12json>", "\x12\x11json>"], "", $sString);
 				if(\strlen($sString)) {
-					$sGUIPath = ($sString[0]==NGL_DIR_SLASH) ? $this->attribute("project_path") : (!empty($this->aFilePath["dirname"]) ? $this->aFilePath["dirname"].NGL_DIR_SLASH : ".".NGL_DIR_SLASH);
-					$sString = $sGUIPath.$sString;
-					$sString = $this->readTemplate($sString);
+					if($bNut) { // via nut => nut:{"nut":"..", "method":"..", "args":{}}
+						$aNut = \json_decode($this->InnerRind2php(\substr($sString,4), true), true);
+						$aArgs = (empty($aNut["args"])) ? null : $aNut["args"];
+						$sString = self::call("nut.".$aNut["nut"])->run($aNut["method"], $aArgs);
+					} else { // via archivo json
+						$sGUIPath = ($sString[0]==NGL_DIR_SLASH) ? $this->attribute("project_path") : (!empty($this->aFilePath["dirname"]) ? $this->aFilePath["dirname"].NGL_DIR_SLASH : ".".NGL_DIR_SLASH);
+						$sString = $sGUIPath.$sString;
+						$sString = $this->readTemplate($sString);
+					}
 					$sString = $this->TagConverter($sString);
 					$aString = self::call("unicode")->split($sString);
 					$sString = \implode($aString);

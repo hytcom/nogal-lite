@@ -408,19 +408,18 @@ class nglFiles extends nglFeeder implements inglFeeder {
 		$aPath = \glob($sPath, GLOB_BRACE);
 
 		$aDirs  = [];
-		// $sObjectIndex = "file.".self::call()->unique();
-		$sObjectIndex = "file";
+		$file = self::call("file");
 		foreach($aPath as $sFile) {
 			$bDir = is_dir($sFile);
 			if($sMode=="info") {
-				self::call($sObjectIndex)->load($sFile);
+				$file->load($sFile);
 				if(!$bDir) {
 					if(!$sMask || ($sMask && \preg_match($sMask, $sFile))) {
-						$vTree = self::call($sObjectIndex)->fileinfo();
+						$vTree = $file->fileinfo();
 						$aDirs[$vTree["basename"]] = $vTree;
 					}
 				} else {
-					$vTree = self::call($sObjectIndex)->fileinfo();
+					$vTree = $file->fileinfo();
 					if($bRecursive) {
 						$aDirs[$vTree["basename"]] = $vTree;
 						$aDirs[$vTree["basename"]][$sChildren] = $this->ls($sFile, $mMask, $sMode, $bRecursive, $sChildren, false);

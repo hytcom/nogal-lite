@@ -83,6 +83,11 @@ class nglZip extends nglBranch implements inglBranch {
 
 	public function cd() {
 		list($sFilePath) = $this->getarguments("filepath", \func_get_args());
+		if($sFilePath=="..") {
+			$aFilePath = \explode("/", $this->sPWD);
+			\array_pop($aFilePath);
+			$sFilePath = \implode("/", $aFilePath);
+		}
 		$this->sPWD = ($sFilePath=="/") ? null : $sFilePath;
 		return $this;
 	}

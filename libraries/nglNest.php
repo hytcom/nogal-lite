@@ -95,7 +95,7 @@ class nglNest extends nglBranch {
 		// fields
 		$aFields = [
 			"text" => ["alias"=>"text", "type"=>"TEXT", "length"=>"", "default"=>"NULL", "attrs"=>"--", "index"=>"--", "null"=>true],
-			"code" => ["alias"=>"code", "type"=>"VARCHAR", "length"=>"16", "default"=>"NULL", "index"=>"UNIQUE", "null"=>true],
+			"code" => ["alias"=>"code", "type"=>"VARCHAR", "length"=>"32", "default"=>"NULL", "index"=>"UNIQUE", "null"=>true],
 			"name" => ["alias"=>"name", "type"=>"VARCHAR", "length"=>"64", "default"=>"NONE", "attrs"=>"--", "index"=>"--", "null"=>false]
 		];
 
@@ -187,7 +187,9 @@ class nglNest extends nglBranch {
 				$this->DefJoins($sObject, $sField);
 				if(isset($mType["type"]) && $mType["type"][0]=="@") { // @tabla OR @tabla-padre cuando es pid
 					$this->DefJoins($sObject, $sField, $mType["type"], $mType["label"]);
+					if(isset($mType["index"])) { $sIndexType = \strtoupper($mType["index"]); }
 					$mType = \array_merge($mType, $this->aFields["fk"]);
+					if(isset($sIndexType)) { $mType["index"] = $sIndexType; }
 				}
 			}
 
