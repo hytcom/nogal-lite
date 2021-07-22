@@ -260,6 +260,7 @@ class nglNest extends nglBranch {
 		}
 
 		if(!isset($aType["label"])) { $aType["label"] = $sLabel; }
+		if(!empty($mType["comment"])) { $aType["comment"] = $mType["comment"]; }
 
 		if($aType["default"]==NGL_NULL && (\strtolower($aType["type"])=="enum" || \strtolower($aType["type"])=="enum")) {
 			$aType["default"] = \explode("','", $aType["length"]);

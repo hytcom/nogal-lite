@@ -48,7 +48,7 @@ class nglAlvin extends nglFeeder implements inglFeeder {
 	final public function __init__($mArguments=null) {
 		$this->aToken = null;
 		$this->aGeneratedKeys = [];
-		$this->sCryptKey = NGL_ALVIN;
+		$this->sCryptKey = $this->PrepareKey(NGL_ALVIN);
 		$this->sPrivateKey = null;
 		$this->sPassphrase = null;
 		$this->aGrants = [];
@@ -134,8 +134,7 @@ SQL;
 					return self::errorMessage($this->object, 1008);
 				}
 			}
-			$sKey = \preg_replace(["/-----BEGIN RSA PRIVATE KEY-----/is", "/-----END RSA PRIVATE KEY-----/is", "/[\s]*/is"], [""], $sKey);
-			$this->sPrivateKey = $sKey;
+			$this->sPrivateKey = $this->PrepareKey($sKey);
 		} else {
 			if($sKey===null) {
 				if(\file_exists($this->sAlvinPath.NGL_DIR_SLASH."public.key")) {
@@ -144,11 +143,20 @@ SQL;
 					return self::errorMessage($this->object, 1007);
 				}
 			}
-			$sKey = \preg_replace(["/-----BEGIN PUBLIC KEY-----/is", "/-----END PUBLIC KEY-----/is", "/[\s]*/is"], [""], $sKey);
-			$this->sCryptKey = $sKey;
+			$this->sCryptKey = $this->PrepareKey($sKey);
 		}
 		return $this;
 	}
+
+    private function PrepareKey($sKey) {
+        return \preg_replace([
+            "/-----BEGIN PUBLIC KEY-----/is",
+            "/-----END PUBLIC KEY-----/is",
+            "/-----BEGIN RSA PRIVATE KEY-----/is",
+            "/-----END RSA PRIVATE KEY-----/is",
+            "/[\s]*/is"
+        ], [""], $sKey);
+    }
 
 	// ADMIN GRANTS ------------------------------------------------------------
 	// carga o crea los permisos

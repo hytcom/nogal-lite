@@ -1,3 +1,14 @@
+# 2.9.8 - 202107221530
+## alvin
+- nuevo método **PrepareKey**
+
+## nest
+- el método **add** ahora soporta comentarios
+
+## rind
+- el método **unset** ahora soporta indices
+
+________________________________________________________________________________
 # 2.9.7 - 202107081630
 ## bee
 - cambios menores en el uso por línea de comandos

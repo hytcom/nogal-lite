@@ -3752,7 +3752,8 @@ namespace nogal {
 			"return" : "string"
 		} **/
 		private function rindUnSet($vArguments) {
-			$sVarName = \preg_replace("/[^a-z0-9_]/i", "", $vArguments["content"]);
+            $sVarName = \preg_replace("/[^a-z0-9_.]/i", "", $vArguments["content"]);
+            $sVarName = \str_replace(".", $this->RIND_QUOTE."][".$this->RIND_QUOTE, $sVarName);
 			$sReturn = '<[PHP[eval(\'unset(Rind::this('.$this->RIND_ME.')->SET['.$this->RIND_QUOTE.$sVarName.$this->RIND_QUOTE.']);\')]PHP]>';
 
 			return $sReturn;
