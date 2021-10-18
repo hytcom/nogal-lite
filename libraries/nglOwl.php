@@ -167,7 +167,7 @@ CREATE TABLE `__ngl_owl_log__` (
 	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
 	`imya` CHAR(32) NOT NULL DEFAULT '' COMMENT 'imya del registro en la tabla de origen',
 	`user` SMALLINT UNSIGNED DEFAULT NULL COMMENT 'id del usuario que ejecutó la acción',
-	`action` ENUM('insert','update','suspend','delete') NOT NULL DEFAULT 'insert' COMMENT 'tipo de acción',
+	`action` ENUM('insert','delete','suspend','toggle','update','unsuspend') NOT NULL DEFAULT 'insert' COMMENT 'tipo de acción',
 	`date` DATETIME NOT NULL COMMENT 'fecha y hora de la ejecución',
 	`ip` CHAR(45) NULL DEFAULT NULL COMMENT 'dirección de IP del usuario',
 	`changelog` MEDIUMTEXT NULL DEFAULT NULL COMMENT 'cuando el argumento owlog_changelog del objeto OWL sea true, se almacenará un JSON con la versión anterior de los datos',

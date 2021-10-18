@@ -1,6 +1,6 @@
 <img src="https://cdn.upps.cloud/images/nogal/nogal.svg" width="150" alt="nogal"/><br />
 
-## the most simple PHP Framework - LITE VERSION
+## the most simple PHP Framework
 **nogal** es un framework PHP de código abierto pensado para que todos puedan desarrollar aplicaciones sin necesidad de tener grandes conocimientos de programación.
 
 Su estructura está pensada para que todo aquel que tenga conocimientos básicos de programación, como que es una **variable**, un **if** y un **bucle**, pueda desarrollar aplicaciones sin mayores dificultades. Esto es gracias, entre otras cosas, a su poderoso sistema de templates llamado [rind](../rind) que permite al desarrollador comunicarse con cualquiera de los objetos del framework desde el HTML, utilizando una sintáxis basada en XML, JS y JSON.

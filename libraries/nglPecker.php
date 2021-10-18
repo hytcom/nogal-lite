@@ -41,7 +41,7 @@ class nglPecker extends nglBranch implements inglBranch {
 		$vArguments["cols"]					= ['$this->SetCols($mValue)', null];
 		$vArguments["colscols"]				= ['(array)$mValue', null];
 		$vArguments["datafile"]				= ['$this->SetDataFile($mValue)', "pecker"];
-		$vArguments["db"]					= ['$this->SetDb($mValue)', null];
+		$vArguments["db"]					= ['$this->SetDb($mValue)', "mysql"];
 		$vArguments["exec"]					= ['$mValue', false];
 		$vArguments["features"]				= ['$this->SetFeatures($mValue)', null];
 		$vArguments["file"]					= ['$mValue', null];
@@ -1211,6 +1211,7 @@ class nglPecker extends nglBranch implements inglBranch {
 	}
 
 	protected function SetDb($db) {
+		die($db);
 		if($db!==null) {
 			if(\is_string($db)) { $db = self::call($db); }
 			$this->db = $db;

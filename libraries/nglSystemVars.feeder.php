@@ -254,7 +254,7 @@ class nglSystemVars extends nglTrunk {
 		$vVersion["author"]			= "hytcom";
 		$vVersion["site"]			= "https://hytcom.net";
 		$vVersion["documentation"]	= "https://github.com/hytcom/wiki/tree/master/nogal";
-		$vVersion["github"]			= "https://github.com/hytcom/nogal";
+		$vVersion["github"]			= "https://github.com/hytcom/nogal-php";
 		$vVersion["docker"]			= "docker pull hytcom/nogal";
 
 		return $vVersion;

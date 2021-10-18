@@ -11,23 +11,27 @@ $ php bee -m "<COMMAND>|<COMMAND>"		modo multiple
 $ php bee -m@ "<COMMAND>@<COMMAND>"		modo multiple con @ como separador
 $ php bee -s -m "<COMMAND>|<COMMAND>"	modo multiple silencioso
 $ php bee -r -m "<COMMAND>|<COMMAND>"	modo multiple retorno (valor crudo)
-$ php bee								modo consola
-$ php bee -s							modo consola silencioso
+$ php bee -s							modo consola silencioso. para finalizar, usar bzzz
+$ php bee								modo consola. para finalizar, usar bzzz
 ------------------------------------------------------------------------------*/
 
 // config
 \define("NGL_BEE", true);
-$FRAMEWORKPATH = "nogal.php";
+$FRAMEWORKPATH = __DIR__."/nogal.php";
 
 // run
 if(\file_exists($FRAMEWORKPATH)) {
 	require_once($FRAMEWORKPATH);
 	$bSilent = $bReturn = false;
-	$sBee = \array_shift($argv);
+	$sBee = \basename(\array_shift($argv));
 
 	if(NGL_TERMINAL && $bee = $ngl("bee")) {
-		if(\count($argv) && $argv[0]=="-s") { $bSilent = true; \array_shift($argv); }
-		if(\count($argv) && $argv[0]=="-r") { $bReturn = true; \array_shift($argv); }
+		$aOptions = \getopt("s::r::m::");
+		if(\count($argv)) {
+			foreach($argv as $k => $sArg) { if($sArg[0]=="-") { unset($argv[$k]); } }
+		}
+		if(isset($aOptions["s"])) { $bSilent = true; }
+		if(isset($aOptions["r"])) { $bReturn = true; }
 		if($sBee=="bee" && !\count($argv)) {
 			$aBuffer = [];
 			while(true) {
@@ -37,15 +41,12 @@ if(\file_exists($FRAMEWORKPATH)) {
 			}
 			$sCommand = \implode("\n",$aBuffer);
 		} else {
-			if(\substr($argv[0],0,2)=="-m") {
-				$sSplitter = \array_shift($argv);
-				$sSplitter = \substr($sSplitter,2);
-				if($sSplitter=="") { $sSplitter = "|"; }
-				$sBuffer = $argv[0];
+			$sCommand = \implode(" ",$argv);
+			if(isset($aOptions["m"])) {
+				$sSplitter = empty($aOptions["m"]) ? "|" : $aOptions["m"];
+				$sBuffer = $sCommand;
 				$aBuffer = \explode($sSplitter, $sBuffer);
 				$sCommand = \implode("\n",$aBuffer);
-			} else {
-				$sCommand = \implode(" ",$argv);
 			}
 		}
 

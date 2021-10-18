@@ -101,18 +101,17 @@ SQL;
 
 	// KEYS --------------------------------------------------------------------
 	public function keys($bSet=false, $bReturnKeys=false) {
-		if($this->crypt) { 
-			$this->aGeneratedKeys = self::call("crypt")->type("rsa")->keys();
-			if($bSet) {
-				$this->setkey(true, $this->aGeneratedKeys["private"]);
-				$this->setkey(false, $this->aGeneratedKeys["public"]);
-			}
-			return ($bReturnKeys) ? $this->aGeneratedKeys : $this;
+		if(!$this->crypt) { self::errorMessage($this->object, 1001); }
+		$this->aGeneratedKeys = self::call("crypt")->type("rsa")->keys();
+		if($bSet) {
+			$this->setkey(true, $this->aGeneratedKeys["private"]);
+			$this->setkey(false, $this->aGeneratedKeys["public"]);
 		}
-		return self::errorMessage($this->object, 1001);
+		return ($bReturnKeys) ? $this->aGeneratedKeys : $this;
 	}
 
 	public function saveKeys() {
+		if(!$this->crypt) { self::errorMessage($this->object, 1001); }
 		if(!\is_dir($this->sAlvinPath)) {
 			if(!@\mkdir($this->sAlvinPath, 0777, true)) {
 				self::errorMessage($this->object, 1005, $this->sAlvinPath);
@@ -161,6 +160,7 @@ SQL;
 	// ADMIN GRANTS ------------------------------------------------------------
 	// carga o crea los permisos
 	public function loadGrants($sPassphrase=null) {
+		if(!$this->crypt) { self::errorMessage($this->object, 1001); }
 		if($sPassphrase===null) { return self::errorMessage($this->object, 1010); }
 		$grants = self::call("file")->load($this->sAlvinPath.NGL_DIR_SLASH."grants");
 		if($grants->size) {
@@ -177,6 +177,7 @@ SQL;
 
 	// escribe el archivo con los permisos
 	public function save($sPassphrase=null) {
+		if(!$this->crypt) { self::errorMessage($this->object, 1001); }
 		if($sPassphrase===null) { return self::errorMessage($this->object, 1010); }
 
 		$this->AdminGrants();
@@ -687,9 +688,6 @@ SQL;
 		} else if($sGrant[0].$sGrant[1]=="?|") {
 			$sGrant = \substr($sGrant, 2);
 			return $this->CheckGrant($sGrant, $sToken, "any");
-		// } else if($sGrant[0].$sGrant[1]=="-|") {
-		// 	$sGrant = substr($sGrant, 2);
-		// 	return $this->CheckGrant($sGrant, $sToken, "not");
 		} else {
 			return $this->CheckGrant($sGrant, $sToken, "all");
 		}
@@ -758,7 +756,7 @@ SQL;
 		$aToCheck = (\strpos($sGrant, ",")===false) ? [$sGrant] : self::call()->explodeTrim(",", $sGrant);
 
 		// nombre del perfil
-		if(\in_array($this->aToken["profile"], $aToCheck)) { return ($sMode=="none") ? false : true; }
+		if(!empty($this->aToken["profile"]) && \in_array($this->aToken["profile"], $aToCheck)) { return ($sMode=="none") ? false : true; }
 
 		if(\is_array($aToCheck) && \count($aToCheck)==1) {
 			$sGrant = $aToCheck[0];

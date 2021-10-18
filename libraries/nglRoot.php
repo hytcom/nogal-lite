@@ -155,8 +155,8 @@ class nglRoot {
 			if($aObjectName[0]=="nut" || $aObjectName[0]=="tutor") { $sObjectName = $aObjectName[0]; }
 			switch($sObjectName) {
 				case "fn"		: 	return self::returnFeeder(self::$fn);
-				case "tutor"	: 	return self::$tutor->load($aObjectName[1], $aArguments);
 				case "nut"		: 	return self::$nut->load($aObjectName[1], $aArguments);
+				case "tutor"	:	if(NGL_READONLY) { self::errorPages(1000); } else { return self::$tutor->load($aObjectName[1], $aArguments); }
 				default			:	$sObjectType = $sObjectName;
 			}
 		}
@@ -506,6 +506,7 @@ class nglRoot {
 	}
 
 	public static function errorPages($nCode) {
+		$sError = "Undefined Error Code";
 		switch($nCode) {
 			case 403:
 				\header("HTTP/1.0 403 Forbidden", true, 403);
@@ -520,6 +521,11 @@ class nglRoot {
 			case 503:
 				\header("HTTP/1.0 503 Not Service Unavailable", true, 503);
 				$sError = "503 Service Unavailable";
+				break;
+				
+			case 1000:
+				\header("HTTP/1.0 503 Not Service Unavailable", true, 503);
+				$sError = "NOGAL 1000 Read only Mode / Tutors Off";
 				break;
 		}
 
@@ -829,10 +835,19 @@ class nglRoot {
 				}
 				return true;
 			}
-			return false;
-		} else {
-			return false;
 		}
+		return false;
+	}
+
+	public static function isFeeder($obj) {
+		if(\method_exists($obj, "__me__")) {
+			$aAvailables = \array_merge(self::$vCoreLibs, self::$vLibraries);
+			$object = $obj->__me__();
+			if(isset($aAvailables[$object->name]) && $aAvailables[$object->name][1]) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	protected static function Libraries() {

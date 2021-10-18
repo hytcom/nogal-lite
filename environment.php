@@ -24,13 +24,16 @@ nglRoot::defineConstant("NGL_PROJECT_RELEASE",									"lasted");
 
 // RUTAS -----------------------------------------------------------------------
 // document_root
-nglRoot::defineConstant("NGL_DOCUMENT_ROOT",									$_SERVER["DOCUMENT_ROOT"]);
+nglRoot::defineConstant("NGL_DOCUMENT_ROOT",									(!empty($_SERVER["DOCUMENT_ROOT"]) ? $_SERVER["DOCUMENT_ROOT"] : $_SERVER["PWD"]));
 
 // directorio project
 nglRoot::defineConstant("NGL_PATH_PROJECT",										NGL_DOCUMENT_ROOT);
 
 // directorio public
 nglRoot::defineConstant("NGL_PATH_PUBLIC",										NGL_DOCUMENT_ROOT);
+
+// directorio rind cache
+nglRoot::defineConstant("NGL_PATH_CACHE",										NGL_PATH_PROJECT."/cache");
 
 // configuraciones
 nglRoot::defineConstant("NGL_PATH_CONF",										NGL_PATH_PROJECT."/conf");
@@ -89,6 +92,9 @@ nglRoot::defineConstant("NGL_REFERER",											true);
 
 // valida la vigencia de un código ONCE
 nglRoot::defineConstant("NGL_ONCECODE",											true);
+
+// detiene la ejecución de tutores
+nglRoot::defineConstant("NGL_READONLY",											false);
 
 // tiempo de vigencia de los códigos ONCE
 nglRoot::defineConstant("NGL_ONCECODE_TIMELIFE",								900);

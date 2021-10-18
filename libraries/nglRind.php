@@ -134,7 +134,7 @@ namespace nogal {
 		final protected function __declareArguments__() {
 			$vArguments							= [];
 			$vArguments["root"] 				= ['$mValue', null];
-			$vArguments["cache"] 				= ['$mValue', null];
+			$vArguments["cache"] 				= ['$mValue', "cache"];
 			$vArguments["gui"] 					= ['$mValue', null];
 			$vArguments["curdir"] 				= ['$mValue', null];
 			$vArguments["scheme"] 				= ['$mValue', "http"];
@@ -1302,14 +1302,11 @@ namespace nogal {
 			// convierte el codigo RIND en codigo PHP
 			$sSource = $this->rind2php($sSource);
 			
-			// dodo
 			// firma md5
 			$sSourceCode  = "<?php /*rind-".$sFileHash."-".$this->RIND_UID."-".$sCacheMode."-".\date("YmdHis")."*/ ?>\n";
 			$sSourceCode .= "<?php ".$this->RIND_TEMPLATES."=[];\n ".$this->sMergeFiles." ?>\n";
 			$sSourceCode .= $sSource;
 			$sSource = null;
-
-			// die($sSource);
 
 			// graba el archivo
 			self::call("file.".$this->RIND_UID)->load($sCacheFile);
@@ -1843,13 +1840,19 @@ namespace nogal {
 			// directorio root
 			$sRoot = self::call()->clearPath($sRoot, false, NGL_DIR_SLASH, true);
 
-			// directorio de cache
-			$sCachePath = ($sCache!==null) ? self::call()->clearPath($sCache, false, NGL_DIR_SLASH, true) : $sRoot;
-
 			// project path
 			$sProjectPath 	= \realpath(NGL_PATH_PROJECT);
 			$nProjectPath 	= \strlen($sProjectPath);
 			$sProjectPath	= self::call()->clearPath($sProjectPath, false, NGL_DIR_SLASH, true);
+
+			// directorio de cache
+			if($sCache!==null) { $sCachePath = self::call()->clearPath($sCache, false, NGL_DIR_SLASH, true); }
+			if($sCachePath===null || $sCachePath===false) { $sCachePath = NGL_PATH_CACHE; }
+			if(!\is_dir($sCachePath)) {
+				if(!@\mkdir($sCachePath, NGL_CHMOD_FOLDER, true)) {
+					self::errorMessage($this->object, 1008, $sCachePath);
+				}
+			}
 
 			// ruta de la carpeta GUI
 			$sGUIPath	= ($sGUI!==null) ? self::call()->clearPath($sGUI, false, NGL_DIR_SLASH, true) : $sRoot;
@@ -3004,7 +3007,7 @@ namespace nogal {
 			$sDataArgument = \str_replace($this->RIND_HTML_QUOTE, '"', $vArguments["source"]);
 			$sDataArgument = \trim($sDataArgument);
 			$sDataArgument = \trim($sDataArgument, "\x22");
-			$sSourceData = $sDataVar.' = '.$sDataArgument.';'.$this->EOL;
+			$sSourceData = '@'.$sDataVar.' = '.$sDataArgument.';'.$this->EOL;
 
 			switch($sType) {
 				case "number":
@@ -3459,7 +3462,7 @@ namespace nogal {
 						$aMethod = \explode(":", $mMethod);
 						$nIndex = (int)$aMethod[0];
 						$nLength = (int)$aMethod[1];
-					} else if(!empty($sMethod) && $mMethod[0]=="[") {
+					} else if(!empty($mMethod) && $mMethod[0]=="[") {
 						$sIndex = \substr($mMethod, 1, -1);
 					} else if(\strpos($mMethod,"|")) {
 						$aPipes = $this->dynVar();
@@ -4049,12 +4052,12 @@ namespace {
 		
 		public static function split($sString) {
 			if(!\is_string($sString)) { return "is not an string"; }
-			return \explode(",", $sString);
+			return \explode(NGL_STRING_SPLITTER, $sString);
 		}
 
 		public static function join($aData) {
 			if(!\is_array($aData)) { return ""; }
-			return \implode(",", $aData);
+			return \implode(NGL_STRING_SPLITTER, $aData);
 		}
 
 		public static function ifempty($sCondition, $bReturn) {

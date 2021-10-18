@@ -127,6 +127,8 @@ class nglDates extends nglFeeder implements inglFeeder {
 		$aDate["year"]					= \date("Y", $nTime);
 		$aDate["week"]					= \date("W", $nTime);
 		$aDate["day_week"]				= \date("w", $nTime);
+		$aDate["week_ini"] 				= \date("Y-m-d", \strtotime($aDate["date"]." -".$aDate["day_week"]." day"));
+		$aDate["week_end"] 				= \date("Y-m-d", \strtotime($aDate["date"]." +".(6-$aDate["day_week"])." day"));
 		$aDate["single_month"]			= \date("n", $nTime);
 		$aDate["single_year"]			= \date("y", $nTime);
 		$aDate["day_name"]				= $this->aSettings["days"][\date("w", $nTime)+1];

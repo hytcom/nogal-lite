@@ -282,6 +282,7 @@ class nglBee extends nglFeeder implements inglFeeder {
 		}
 
 		$sArgument = \trim($mArgument);
+		if(!\preg_match("/\"(.*?)\"/", $sArgument) && \strpos($sArgument, " ")) { $sArgument = \json_encode(\explode(" ", $sArgument)); }
 		$sArgument = \trim($sArgument, '"');
 
 		if($sArgument==='-$:') {

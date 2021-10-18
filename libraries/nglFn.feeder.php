@@ -1230,6 +1230,12 @@ class nglFn extends nglTrunk {
 		return $vRGB;
 	}
 
+	public function conf($sObjectName) {
+		if($obj = self::call($sObjectName)) {
+			return $obj->__configFile__();
+		}
+	}
+
 	/** FUNCTION {
 		"name" : "coockie",
 		"type" : "public",
@@ -2374,6 +2380,60 @@ class nglFn extends nglTrunk {
 		return ["constants"=>$aConstants["user"], "variables"=>$aSettings];
 	}
 
+	public static function sow($sName, $sNewName) {
+		$sName = \strtolower(\preg_replace("/[^a-z0-9\_\-]+/", "", $sName));
+		$sNewName = \strtolower(\preg_replace("/[^a-z0-9\_\-\/]+/", "", $sNewName));
+		$sFolder = "components";
+		switch($sName) {
+			case "nut": $sName = "nut.php"; $sDestine = NGL_PATH_NUTS.NGL_DIR_SLASH.$sNewName.".php"; break;
+			case "tutor": $sName = "tutor.php"; $sDestine = NGL_PATH_TUTORS.NGL_DIR_SLASH.$sNewName.".php"; break;
+			case "owltutor": $sName = "owltutor.php"; $sDestine = NGL_PATH_TUTORS.NGL_DIR_SLASH.$sNewName.".php"; break;
+			default:
+				$sFolder = "structures";
+				$sDestine = $sNewName;
+		}
+
+		$sSource = NGL_PATH_FRAMEWORK.NGL_DIR_SLASH."assets".NGL_DIR_SLASH."templates".NGL_DIR_SLASH.$sFolder.NGL_DIR_SLASH.$sName;
+		if(\file_exists($sSource)) {
+			if(\is_dir($sSource)) { $sNewName = null; }
+			if($sNewName===null) {
+				$source = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($sSource, \RecursiveDirectoryIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
+				foreach($source as $item) {
+					$sDestinePath = $sDestine.NGL_DIR_SLASH.$source->getSubPathname();
+					if(!\file_exists($sDestinePath)) {
+						if($item->isDir()) {
+							\mkdir($sDestinePath, NGL_CHMOD_FOLDER);
+						} else {
+							\copy($item, $sDestinePath);
+							\chmod($sDestinePath, NGL_CHMOD_FILE);
+						}
+					}
+				}
+				if(\file_exists($sDestine.NGL_DIR_SLASH."aftersow")) {
+					include_once($sDestine.NGL_DIR_SLASH."aftersow");
+				}
+			} else {
+				if(!\file_exists($sDestine) && NGL_PATH_PROJECT!=NGL_PATH_FRAMEWORK) {
+					if(!\is_dir(NGL_PATH_NUTS)) { \mkdir(NGL_PATH_NUTS, NGL_CHMOD_FOLDER); }
+					if(!\is_dir(NGL_PATH_TUTORS)) { \mkdir(NGL_PATH_TUTORS, NGL_CHMOD_FOLDER); }
+					$sCamelName = \ucwords($sNewName);
+					$sBuffer = \file_get_contents($sSource);
+					$sBuffer = \str_replace(
+						["<{=LOWERNAME=}>", "<{=UPPERNAME=}>", "<{=CAMELNAME=}>", "<{=LOWERCAMELNAME=}>"],
+						[$sNewName, \strtoupper($sNewName), $sCamelName, \lcfirst($sCamelName)],
+						$sBuffer
+					);
+					\file_put_contents($sDestine, $sBuffer);
+					\chmod($sDestine, NGL_CHMOD_FILE);
+					return true;
+				}
+				return false;
+			}
+			return true;
+		}
+		return false;
+	}
+
 	/** FUNCTION {
 		"name" : "strBoxAppend",
 		"type" : "public",
@@ -2617,7 +2677,7 @@ class nglFn extends nglTrunk {
 		"return" : "string"
 	} **/
 	function strToVars($sString, $aVars) {
-		\preg_match_all("/\{:([a-z][a-z0-9_\.]*):\}/is", $sString, $aMatchs, \preg_SET_ORDER);
+		\preg_match_all("/\{:([a-z][a-z0-9_\.]*):\}/is", $sString, $aMatchs, PREG_SET_ORDER);
 		foreach($aMatchs as $aColon) {
 			$mValue = $aVars;
 			$aVar = \explode(".", $aColon[1]);

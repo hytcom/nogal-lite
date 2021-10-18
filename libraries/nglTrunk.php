@@ -18,9 +18,14 @@ class nglTrunk extends nglRoot {
 	}
 
 	final public function __configFile__() {
-		$aExplained = [];
+		$aExplained = $aData = [];
 		if(\file_exists(NGL_PATH_FRAMEWORK.NGL_DIR_SLASH."docs".NGL_DIR_SLASH.$this->object.".info")) {
 			if(($sConfig = \file_get_contents(NGL_PATH_FRAMEWORK.NGL_DIR_SLASH."docs".NGL_DIR_SLASH.$this->object.".info"))) {
+				$aData = self::parseConfigString($sConfig, true, true);
+				if(isset($aData["documentation"])) { $aExplained["documentation"]["url"] = $aData["documentation"]["url"]; }
+			}
+		} else {
+			if(($sConfig = @\file_get_contents("https://raw.githubusercontent.com/hytcom/nogal-php/master/docs/".$this->object.".info"))) {
 				$aData = self::parseConfigString($sConfig, true, true);
 				if(isset($aData["documentation"])) { $aExplained["documentation"]["url"] = $aData["documentation"]["url"]; }
 			}
@@ -73,8 +78,14 @@ class nglTrunk extends nglRoot {
 			$sContent .= "\n";
 		}
 
-		if(\is_writeable(NGL_PATH_CONF) && !\file_exists(NGL_PATH_CONF.NGL_DIR_SLASH.$this->object.".conf")) {
-			\file_put_contents(NGL_PATH_CONF.NGL_DIR_SLASH.$this->object.".conf", $sContent);
+		if(empty($sContent)) {
+			\trigger_error("Can't get config file data: https://raw.githubusercontent.com/hytcom/nogal-php/master/docs/".$this->object.".info", E_USER_ERROR);
+			die();
+		}
+
+		if(\is_writeable(NGL_PATH_TMP) && !\file_exists(NGL_PATH_TMP.NGL_DIR_SLASH.$this->object.".conf")) {
+			\file_put_contents(NGL_PATH_TMP.NGL_DIR_SLASH.$this->object.".conf", $sContent);
+			return "The config file has been created in: ".NGL_PATH_TMP."\nMove the file to: ".NGL_PATH_CONF."\n";
 		} else {
 			return $sContent;
 		}

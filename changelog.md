@@ -1,3 +1,41 @@
+# 2.9.9 - 202110181530
+## general
+- se reemplazó samples por una estructura de templates que instala los esqueletos con el método **fn:sow**
+- se añadió la constante **NGL_PATH_CACHE** como directorio para el cache de **rind**
+
+## alvin
+- se bloquearon llamadas al objeto **crypt** para la versión **lite**
+
+## bee
+- mejoras en la versión por terminal
+
+## date
+- **info** ahora también retorna **week_ini** y **week_end**
+
+## fn
+- nuevo método **sow**
+- nuevo método **conf**, que ejecuta el método **\_\_configfile\_\_** del objeto pasado
+
+## owl
+- se añadió **toggle** en las acciones de **\_\_ngl_owl_log\_\_**
+
+## pecker
+- ahora **mysql** es el valor por defecto del argumento **db**
+
+## rind
+- fix error en **set** cuando se utilizaba el métodos \[indice\]
+- fix error relacionados con la carpeta **cache** por defecto, ahora **NGL_PATH_CACHE**
+- fix notice en **loop**
+- los métodos **split** y **join** ahora usan como separador por default **NGL_STRING_SPLITTER**
+
+## root
+- nueva constante **NGL_READONLY** que bloquea el uso de tutores
+- nuevo método **isFeeder**
+
+## trunk
+- config file via URL desde GitHub para la versión **lite**
+
+________________________________________________________________________________
 # 2.9.8 - 202107221530
 ## alvin
 - nuevo método **PrepareKey**
