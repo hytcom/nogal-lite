@@ -148,7 +148,8 @@ class nglOwl extends nglBranch {
 	}
 
 	public function dbStructure() {
-		return <<<SQL
+		$aStructures = [];
+		$aStructures["mysql"] = <<<SQL
 -- MySQL / MariaDB --------------------------------------------------------------
 -- owl index --
 DROP TABLE IF EXISTS `__ngl_owl_index__`;
@@ -193,6 +194,16 @@ CREATE TABLE `__ngl_owl_structure__` (
 CREATE INDEX `name_idx` ON `__ngl_owl_structure__` (`name`);
 CREATE UNIQUE INDEX `code_idx` ON `__ngl_owl_structure__` (`code`);
 SQL;
+
+		if($this->db && isset($aStructures[$this->db->object])) {
+			return $aStructures[$this->db->object];
+		}
+
+		return "";
+	}
+
+	public function dbMysqlStructure() {
+
 	}
 
 	public function delete() {

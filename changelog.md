@@ -17,8 +17,13 @@
 - nuevo método **sow**
 - nuevo método **conf**, que ejecuta el método **\_\_configfile\_\_** del objeto pasado
 
+## nest
+- se agregaron mas tipos de campos a los campos por defecto
+- fix error y mejora en el método **CreateStructure**
+
 ## owl
 - se añadió **toggle** en las acciones de **\_\_ngl_owl_log\_\_**
+- **dbStructure** ahora discrimina su respuesta dependiendo del driver pasado
 
 ## pecker
 - ahora **mysql** es el valor por defecto del argumento **db**

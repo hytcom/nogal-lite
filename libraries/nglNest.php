@@ -94,7 +94,13 @@ class nglNest extends nglBranch {
 
 		// fields
 		$aFields = [
+			"varchar" => ["alias"=>"varchar", "type"=>"VARCHAR", "length"=>"255", "default"=>"NULL", "attrs"=>"--", "index"=>"--", "null"=>true],
 			"text" => ["alias"=>"text", "type"=>"TEXT", "length"=>"", "default"=>"NULL", "attrs"=>"--", "index"=>"--", "null"=>true],
+			"date" => ["alias"=>"date","type"=>"DATE","length"=>"","default"=>"NULL","attrs"=>"--","index"=>"--","null"=>true],
+			"datetime" => ["alias"=>"datetime","type"=>"DATETIME","length"=>"","default"=>"NULL","attrs"=>"--","index"=>"--","null"=>true],
+			"time" => ["alias"=>"time","type"=>"TIME","length"=>"","default"=>"NULL","attrs"=>"--","index"=>"--","null"=>true],
+			"timestamp" => ["alias"=>"timestamp","type"=>"TIMESTAMP","length"=>"","default"=>"NULL","attrs"=>"--","index"=>"--","null"=>true],
+			"int" => ["alias"=>"int","type"=>"INT","length"=>"","default"=>"NULL","attrs"=>"UNSIGNED","index"=>"--","null"=>true],
 			"code" => ["alias"=>"code", "type"=>"VARCHAR", "length"=>"32", "default"=>"NULL", "index"=>"UNIQUE", "null"=>true],
 			"name" => ["alias"=>"name", "type"=>"VARCHAR", "length"=>"64", "default"=>"NONE", "attrs"=>"--", "index"=>"--", "null"=>false]
 		];
@@ -906,6 +912,7 @@ class nglNest extends nglBranch {
 		$db->debug = $aDbConfig["debug"];
 		$db->insert_mode = $aDbConfig["insert_mode"];
 		$db->check_colnames = $aDbConfig["check_colnames"];
+
 		$this->attribute("sql", "use `".$this->db->base."`;\n\n".$sSQLStructure."\n\n".$sSQL);
 
 		if($bRun) {
@@ -1584,7 +1591,7 @@ class nglNest extends nglBranch {
 	}
 
 	private function CreateStructure() {
-		$sSQL = self::call("owl")->dbStructure();
+		$sSQL = self::call("owl")->connect($this->db)->dbStructure();
 		$sSQL .= <<<SQL
 
 -- sentences --
@@ -1600,6 +1607,8 @@ CREATE TABLE `__ngl_sentences__` (
 
 -- PROJECT ENTITIES ------------------------------------------------------------\n
 SQL;
+
+		return $sSQL;
 	}
 
 	private function CreateTableStructure($sTable, $aTableFields, $bCreate=false) {
