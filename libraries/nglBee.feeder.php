@@ -120,7 +120,7 @@ class nglBee extends nglFeeder implements inglFeeder {
 
 	private function RunCmd($aCommand) {
 		$sCmd = $aCommand[0];
-		if(\strpos($sCmd,":")) {
+		if($sCmd!="-$:" && \strpos($sCmd,":")) {
 			$aCmd = \explode(":", $sCmd);
 			$sCmd = $aCmd[0];
 			\array_shift($aCommand);
