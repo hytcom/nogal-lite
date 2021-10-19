@@ -83,7 +83,10 @@ class nglTrunk extends nglRoot {
 			die();
 		}
 
-		if(\is_writeable(NGL_PATH_TMP) && !\file_exists(NGL_PATH_TMP.NGL_DIR_SLASH.$this->object.".conf")) {
+		if(\is_writeable(NGL_PATH_CONF) && !\file_exists(NGL_PATH_CONF.NGL_DIR_SLASH.$this->object.".conf")) {
+			\file_put_contents(NGL_PATH_CONF.NGL_DIR_SLASH.$this->object.".conf", $sContent);
+			return true;
+		} else if(\is_writeable(NGL_PATH_TMP) && !\file_exists(NGL_PATH_TMP.NGL_DIR_SLASH.$this->object.".conf")) {
 			\file_put_contents(NGL_PATH_TMP.NGL_DIR_SLASH.$this->object.".conf", $sContent);
 			return "The config file has been created in: ".NGL_PATH_TMP."\nMove the file to: ".NGL_PATH_CONF."\n";
 		} else {

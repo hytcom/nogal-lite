@@ -8,6 +8,7 @@
 
 ## bee
 - mejoras en la versión por terminal
+- ahora también acepta la sintáxis **obj:método**. Ej: php bee fn imya => php bee fn:imya
 
 ## date
 - **info** ahora también retorna **week_ini** y **week_end**

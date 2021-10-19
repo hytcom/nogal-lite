@@ -120,6 +120,12 @@ class nglBee extends nglFeeder implements inglFeeder {
 
 	private function RunCmd($aCommand) {
 		$sCmd = $aCommand[0];
+		if(\strpos($sCmd,":")) {
+			$aCmd = \explode(":", $sCmd);
+			$sCmd = $aCmd[0];
+			\array_shift($aCommand);
+			\array_unshift($aCommand, $aCmd[0], $aCmd[1]);
+		}
 
 		if($sCmd[0]==="@") {
 			if($sCmd=="@php") {
