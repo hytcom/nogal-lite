@@ -120,13 +120,6 @@ class nglBee extends nglFeeder implements inglFeeder {
 
 	private function RunCmd($aCommand) {
 		$sCmd = $aCommand[0];
-		if($sCmd!="-$:" && \strpos($sCmd,":")) {
-			$aCmd = \explode(":", $sCmd);
-			$sCmd = $aCmd[0];
-			\array_shift($aCommand);
-			\array_unshift($aCommand, $aCmd[0], $aCmd[1]);
-		}
-
 		if($sCmd[0]==="@") {
 			if($sCmd=="@php") {
 				\array_shift($aCommand);
@@ -189,6 +182,13 @@ class nglBee extends nglFeeder implements inglFeeder {
 			$x++;
 			$aCommand = \explode(" ", $sSentence, 3);
 			$sCmd = \strtolower($aCommand[0]);
+			if($sCmd!="-$:" && \strpos($sCmd,":")) {
+				$aCommand = \explode(" ", $sSentence, 2);
+				$aCmd = \explode(":", $sCmd);
+				$sCmd = $aCmd[0];
+				if(!empty($aCommand[1])) { \array_push($aCmd, $aCommand[1]); }
+				$aCommand = $aCmd;
+			}
 			
 			if($sCmd=="@loop") {
 				$this->aLoops[] = $x;

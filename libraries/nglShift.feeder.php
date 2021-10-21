@@ -1620,8 +1620,6 @@ class nglShift extends nglTrunk {
 		$nHeaderAlign	= ($sHeaderAlign=="left") ? STR_PAD_RIGHT : ($sHeaderAlign=="right" ? STR_PAD_LEFT : STR_PAD_BOTH);
 		$nBodyAlign		= ($sBodyAlign=="left") ? STR_PAD_RIGHT : ($sBodyAlign=="right" ? STR_PAD_LEFT : STR_PAD_BOTH);
 
-		if(!self::call()->isarrayarray($aData)) { $aData = [$aData]; }
-		
 		$aCells = \array_fill_keys(\array_keys(\current($aData)), 0);
 		$nCells = \count($aCells);
 		foreach($aCells AS $sColname => $nLength) {
