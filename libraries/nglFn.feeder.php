@@ -2382,7 +2382,7 @@ class nglFn extends nglTrunk {
 
 	public static function sow($sName, $sNewName) {
 		$sName = \strtolower(\preg_replace("/[^a-z0-9\_\-]+/", "", $sName));
-		$sNewName = \strtolower(\preg_replace("/[^a-z0-9\_\-\/]+/", "", $sNewName));
+		$sNewName = \strtolower(\preg_replace("/[^a-zA-Z0-9\_\-\/]+/", "", $sNewName));
 		$sFolder = "components";
 		switch($sName) {
 			case "nut": $sName = "nut.php"; $sDestine = NGL_PATH_NUTS.NGL_DIR_SLASH.$sNewName.".php"; break;

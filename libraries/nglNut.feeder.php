@@ -138,6 +138,12 @@ class nglNut extends nglTrunk {
 		if($aSafeMethods!==null) { $this->aSafeMethods = $aSafeMethods; }
 		return $aSafeMethods;
 	}
+
+	final protected function ExportContent(&$aArguments) {
+		if(\is_array($aArguments) && \count($aArguments)===1 && \array_key_exists("content", $aArguments)) {
+			$aArguments = $aArguments["content"];
+		}
+	}
 }
 
 ?>

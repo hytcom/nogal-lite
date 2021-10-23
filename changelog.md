@@ -21,6 +21,9 @@
 - se agregaron mas tipos de campos a los campos por defecto
 - fix error y mejora en el método **CreateStructure**
 
+## nut
+- nuevo método **ExportContent**
+
 ## owl
 - se añadió **toggle** en las acciones de **\_\_ngl_owl_log\_\_**
 - **dbStructure** ahora discrimina su respuesta dependiendo del driver pasado
