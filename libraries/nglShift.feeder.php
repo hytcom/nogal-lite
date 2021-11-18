@@ -1615,6 +1615,8 @@ class nglShift extends nglTrunk {
 	}
 
 	public function textTable($aData, $vOptions=[]) {
+		if(!self::call()->isarrayarray($aData)) { return ""; }
+
 		$sHeaderAlign	= (isset($vOptions["tthalign"])) ? \strtolower($vOptions["tthalign"]) : "center";
 		$sBodyAlign		= (isset($vOptions["ttdalign"])) ? \strtolower($vOptions["ttdalign"]) : "left";
 		$nHeaderAlign	= ($sHeaderAlign=="left") ? STR_PAD_RIGHT : ($sHeaderAlign=="right" ? STR_PAD_LEFT : STR_PAD_BOTH);
@@ -1651,7 +1653,7 @@ class nglShift extends nglTrunk {
 			$x = 0;
 			foreach($aRow as $sCell) {
 				$sCell = \trim($sCell, "\t");
-				$sCell = \preg_replace('/[\x00-\x1F\x80-\xFF]/', "?", $sCell);
+				$sCell = \preg_replace('/[\x00-\x1F\x80-\xFF]+/', "?", $sCell);
 				if($sCell===null) {
 					$sCell = "NULL";
 				} else if($sCell===false) {

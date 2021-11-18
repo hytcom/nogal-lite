@@ -49,6 +49,7 @@ class nglFn extends nglTrunk {
 	} **/
 	public function apacheMimeTypes($bGetOnlineData=false) {
 		if($this->vMimeTypes!==null) { return $this->vMimeTypes; }
+		if($bGetOnlineData && !$this->isConn()) { $bGetOnlineData = false; }
 
 		$vMimeTypes = [];
 		if(!$bGetOnlineData) {
@@ -59,7 +60,7 @@ class nglFn extends nglTrunk {
 			}
 		} else {
 			$sURL = "http://svn.apache.org/repos/asf/httpd/httpd/trunk/docs/conf/mime.types";
-			if(!$sBuffer = \file_get_contents($sURL)) {
+			if(!$sBuffer = @\file_get_contents($sURL)) {
 				self::errorMessage("NOGAL", 1016, "URL: ".$sURL, "die");
 			} else {
 				$aBuffer = \explode("\n", $sBuffer);
@@ -89,7 +90,7 @@ class nglFn extends nglTrunk {
 				}
 
 				if(\is_dir(NGL_PATH_DATA) && \is_writable(NGL_PATH_DATA)) {
-					\file_put_contents(NGL_PATH_DATA.NGL_DIR_SLASH."mime_types.conf", $sContent);
+					@\file_put_contents(NGL_PATH_DATA.NGL_DIR_SLASH."mime_types.conf", $sContent);
 				}
 			}
 		}
@@ -1192,7 +1193,6 @@ class nglFn extends nglTrunk {
 		return self::call()->clearPath($sSafePath);
 	}
 
-
 	/** FUNCTION {
 		"name" : "colorHex",
 		"type" : "public",
@@ -1903,6 +1903,15 @@ class nglFn extends nglTrunk {
 	} **/
 	public function isBase64($sValue) {
 		return (\base64_encode(\base64_decode($sValue, true))===$sValue);
+	}
+
+	public function isConn($sDestine="google.com", $nPort=80) {
+		if($connected = @fsockopen($sDestine, $nPort)){
+			fclose($connected);
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	/** FUNCTION {

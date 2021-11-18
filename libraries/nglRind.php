@@ -3143,7 +3143,7 @@ namespace nogal {
 				if($sRowSource) {
 					$sLoop .= $sRowData.' = '.$sRowSource.';'.$this->EOL;
 					if($sType!="owl" && $sType!="element") {
-						$sLoop .= 'if(!isset('.$sDataVar.'['.$sKeysVar.'['.$sCountVar.']])) { continue; }'.$this->EOL;
+						$sLoop .= 'if(!\array_key_exists('.$sKeysVar.'['.$sCountVar.'], '.$sDataVar.')) { continue; }'.$this->EOL;
 					}
 					$sLoop .= 'Rind::this('.$this->RIND_ME.')->SET["'.$sName.'"]["data"] = (\is_array('.$sRowData.')) ? '.$sRowData.' : ['.$sRowData.'];'.$this->EOL;
 					$sLoop .= 'Rind::this('.$this->RIND_ME.')->SET["'.$sName.'"]["current"] = \current(Rind::this('.$this->RIND_ME.')->SET["'.$sName.'"]["data"]); \reset(Rind::this('.$this->RIND_ME.')->SET["'.$sName.'"]["data"]);'.$this->EOL;

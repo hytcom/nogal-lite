@@ -1,3 +1,23 @@
+# 3.0.00 - 202111181900
+## general
+- nuevos componentes relacionados a **fn:sow**
+- implementación de git tags
+- nueva codificación para el versionado.
+  - grandes cambios y mejoras. Ej: versión 4.0 a versión 5.0
+  - pequeños cambios y/o correcciones de errores. Ej: versión 4.1 a versión 4.2
+  - corrección al software y pocos cambios. Ej: versión 4.1.15 a versión 4.1.23
+
+# fn
+- nuevo método **isConn** que evalua la conexión a internet
+- fix error en **apacheMimeTypes** cuando no hay conexión a internet
+
+## rind
+- fix error en **loop**, se estaban ignorando los valores vacios en los arrays
+
+## shift
+- fix errors en **textTable** con caracteres unicode
+
+________________________________________________________________________________
 # 2.9.9 - 202110181530
 ## general
 - se reemplazó samples por una estructura de templates que instala los esqueletos con el método **fn:sow**
