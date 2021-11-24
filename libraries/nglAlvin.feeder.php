@@ -49,7 +49,6 @@ class nglAlvin extends nglFeeder implements inglFeeder {
 	final public function __init__($mArguments=null) {
 		$this->aToken = null;
 		$this->aGeneratedKeys = [];
-		$this->sCryptKey = $this->PrepareKey(NGL_ALVIN);
 		$this->sPrivateKey = null;
 		$this->sPassphrase = null;
 		$this->aGrants = [];
@@ -61,6 +60,7 @@ class nglAlvin extends nglFeeder implements inglFeeder {
 		$this->roles = self::call("tree")->loadtree([]);
 		if($this->crypt!==null) { $this->crypt->type("rsa")->base64(true); }
 		$this->__errorMode__("die");
+		$this->setkey();
 	}
 
 	// DB --------------------------------------------------------------------
