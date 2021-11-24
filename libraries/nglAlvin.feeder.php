@@ -132,7 +132,7 @@ SQL;
 		if(!$this->crypt) { self::errorMessage($this->object, 1001); }
 		if($bPrivate) {
 			if($sKey===null) {
-				if(\file_exists($this->sAlvinPath.NGL_DIR_SLASH."private.key")) {
+				if(\file_exists($this->sAlvinPath.NGL_DIR_SLASH."private.key") && NGL_ALVIN!==null) {
 					$sKey = \file_get_contents($this->sAlvinPath.NGL_DIR_SLASH."private.key");
 				} else {
 					return self::errorMessage($this->object, 1008);
@@ -141,7 +141,7 @@ SQL;
 			$this->sPrivateKey = $this->PrepareKey($sKey);
 		} else {
 			if($sKey===null) {
-				if(\file_exists($this->sAlvinPath.NGL_DIR_SLASH."public.key")) {
+				if(\file_exists($this->sAlvinPath.NGL_DIR_SLASH."public.key") && NGL_ALVIN!==null) {
 					$sKey = \file_get_contents($this->sAlvinPath.NGL_DIR_SLASH."public.key");
 				} else {
 					return self::errorMessage($this->object, 1007);

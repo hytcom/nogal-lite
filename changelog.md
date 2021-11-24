@@ -1,10 +1,11 @@
-# 3.0.15 - 202111240100
+# 3.0.15 - 202111240830
 ## general
 - nuevo archivo **constants.php** invocado en **config.php**
 - depuración de algunos componentes
 
 ## alvin
 - **savekeys** ya no sobreescribe claves existentes
+- fix error en **setkey** cuando **NGL_ALVIN** es **null**
 
 ## bee
 - nuevo método **bzzzfile**
