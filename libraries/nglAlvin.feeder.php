@@ -26,6 +26,7 @@ https://github.com/hytcom/wiki/blob/master/nogal/docs/alvinuso.md
 1010 = Passphrase indefinida
 1011 = Nombre de permiso inválido
 1012 = No se pudieron cargar los permisos
+1013 = No se pudieron salvar las claves porque ya existen
 
 */
 namespace nogal;
@@ -65,7 +66,7 @@ class nglAlvin extends nglFeeder implements inglFeeder {
 	// DB --------------------------------------------------------------------
 	public function dbStructure() {
 		return <<<SQL
--- MySQL / MariaDB --------------------------------------------------------------
+-- MySQL / MariaDB -------------------------------------------------------------
 -- users
 CREATE TABLE IF NOT EXISTS `users` (
 	`id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
@@ -78,9 +79,9 @@ CREATE TABLE IF NOT EXISTS `users` (
 	`email` CHAR(96) DEFAULT NULL,
 	`profile` CHAR(32) DEFAULT NULL,
 	`roles` CHAR(255) DEFAULT NULL,
-	`alvin` MEDIUMEXT DEFAULT NULL COMMENT 'token alvin',
+	`alvin` MEDIUMEXT DEFAULT NULL COMMENT 'alvin token',
 	PRIMARY KEY (`id`)
-) ENGINE=MyISAM, CHARACTER SET utf8mb4, COLLATE=utf8mb4_unicode_ci COMMENT='Tabla de usuarios del sistema';
+) ENGINE=MyISAM, DEFAULT CHARSET=utf8mb4, COLLATE=utf8mb4_unicode_ci COMMENT='Tabla de usuarios del sistema';
 CREATE UNIQUE INDEX `imya` ON `users` (`imya`);
 CREATE UNIQUE INDEX `username` ON `users` (`username`);
 CREATE INDEX `state` ON `users` (`state`);
@@ -117,8 +118,12 @@ SQL;
 				self::errorMessage($this->object, 1005, $this->sAlvinPath);
 			}
 		}
-		@\file_put_contents($this->sAlvinPath.NGL_DIR_SLASH."private.key", $this->aGeneratedKeys["private"]);
-		@\file_put_contents($this->sAlvinPath.NGL_DIR_SLASH."public.key", $this->aGeneratedKeys["public"]);
+		if(!\file_exists($this->sAlvinPath.NGL_DIR_SLASH."private.key") && !\file_exists($this->sAlvinPath.NGL_DIR_SLASH."public.key")) {
+			@\file_put_contents($this->sAlvinPath.NGL_DIR_SLASH."private.key", $this->aGeneratedKeys["private"]);
+			@\file_put_contents($this->sAlvinPath.NGL_DIR_SLASH."public.key", $this->aGeneratedKeys["public"]);
+		} else {
+			self::errorMessage($this->object, 1013, $this->sAlvinPath);
+		}
 
 		return $this;
 	}

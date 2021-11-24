@@ -345,7 +345,7 @@ class nglNest extends nglBranch {
 	}
 
 	public function create() {
-		list($sObject, $sTitle, $aFields) = $this->getarguments("entity,title,fields", \func_get_args());
+		list($sObject, $sTitle, $aFields, $sComment) = $this->getarguments("entity,title,fields,comment", \func_get_args());
 
 		if($sObject==null) {
 			self::errorMessage($this->object, 1001); // empty object name
@@ -364,7 +364,7 @@ class nglNest extends nglBranch {
 		$sObject = $this->FormatName($sObject);
 		$this->owl["tables"][$sObject] = [];
 		$this->owl["titles"][$sObject] = ($sTitle!==null) ? $sTitle : $sObject;
-		$this->owl["nest"]["objects"][$sObject]	= ["left"=>0, "top"=>0, "comment"=>""];
+		$this->owl["nest"]["objects"][$sObject]	= ["left"=>0, "top"=>0, "comment"=>"$sComment"];
 		$this->owl["def"][$sObject] = [];
 		$this->SetObject($sObject);
 
@@ -1532,7 +1532,7 @@ class nglNest extends nglBranch {
 		$sCodeField = $this->argument("normalize_code");
 		$sNameField = $this->argument("normalize_name");
 		$aColumns = [
-			"codigo" => ["alias"=>"code", "label"=>$sCodeField],
+			"code" => ["alias"=>"code", "label"=>$sCodeField],
 			"nombre" => ["alias"=>"name", "label"=>$sNameField]
 		];
 		$create = $this->create($sNewObject, $sTitle, $aColumns);

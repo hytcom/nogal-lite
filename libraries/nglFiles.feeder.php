@@ -166,7 +166,7 @@ class nglFiles extends nglFeeder implements inglFeeder {
 		"seealso" : ["nglFiles::unlinkr"],
 		"return" : "array"
 	} **/
-	public function copyr($sSource, $sDestine, $sMask="*", $bRecursive=true, $bIncludeHidden=false, $mCase=false, $bLog=false) {
+	public function copyr($sSource, $sDestine, $sMask="*", $bRecursive=true, $bIncludeHidden=true, $mCase=false, $bLog=false) {
 		$aLog = [];
 		$nCopied = 0;
 		

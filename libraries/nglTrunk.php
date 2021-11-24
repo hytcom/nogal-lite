@@ -94,6 +94,39 @@ class nglTrunk extends nglRoot {
 		}
 	}
 
+	final public function __configFileValue__($sKey, $sValue=null) {
+		$bUpdated = false;
+		if(\file_exists(NGL_PATH_CONF.NGL_DIR_SLASH.$this->object.".conf")) {
+			if(\is_numeric($sValue) || \in_array($sValue,["false","true","null",false,true,null],true)) {
+				$sValue = \str_replace(["'", '"'], "", \trim($sValue));
+			} else if(\is_string($sValue)) {
+				$sValue = '"'.$sValue.'"';
+			}
+
+			$aConfig = self::parseConfigFile(NGL_PATH_CONF.NGL_DIR_SLASH.$this->object.".conf", true);
+			if(\array_key_exists($sKey, $aConfig["arguments"])) {
+				$sContent = \file_get_contents(NGL_PATH_CONF.NGL_DIR_SLASH.$this->object.".conf");
+				$sContent = \preg_replace("/".$sKey." *=(.*?)\n/is", $sKey." = ".$sValue."\n", $sContent);
+				$bUpdated = true;
+			}
+
+			if($bUpdated) {
+				if(\is_writeable(NGL_PATH_CONF)) {
+					\file_put_contents(NGL_PATH_CONF.NGL_DIR_SLASH.$this->object.".conf", $sContent);
+					return true;
+				} else if(\is_writeable(NGL_PATH_TMP)) {
+					\file_put_contents(NGL_PATH_TMP.NGL_DIR_SLASH.$this->object.".conf", $sContent);
+					return "The config file has been created in: ".NGL_PATH_TMP."\nMove the file to: ".NGL_PATH_CONF."\n";
+				} else {
+					return $sContent;
+				}
+			}
+			return "Invalid key '".$sKey."'\n";
+		} else {
+			return "The config file doesn't exists\n";
+		}
+	}
+
 	final public function __errorMode__($sMode=NGL_HANDLING_ERRORS_MODE) {
 		return self::errorMode($this->object, $sMode);
 	}

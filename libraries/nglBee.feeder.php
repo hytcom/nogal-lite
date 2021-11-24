@@ -29,13 +29,14 @@ class nglBee extends nglFeeder implements inglFeeder {
 
 	final public function __init__($mArguments=null) {
 		if(!\defined("NGL_BEE") || NGL_BEE===null || NGL_BEE===false) {
-		if(NGL_TERMINAL) {
-			$this->__errorMode__("shell");
-			self::errorMode("shell");
-		} else {
-			$this->__errorMode__("die");
+			if(NGL_TERMINAL) {
+				$this->__errorMode__("shell");
+				self::errorMode("shell");
+			} else {
+				$this->__errorMode__("die");
+			}
+			self::errorMessage("bee", null, "Bee is not available");
 		}
-		self::errorMessage("bee", null, "Bee is not available"); }
 
 		$this->sDelimiter = "(\r\n|\n)";
 		$this->aLibs = self::Libraries();
@@ -53,7 +54,7 @@ class nglBee extends nglFeeder implements inglFeeder {
 		$this->aVars = $aVars;
 	}
 
-	public function bzzz($sSentences, $bAutoSave=false) {
+	public function bzzz($sSentences) {
 		if(!NGL_TERMINAL && NGL_BEE!==true && !isset($_SESSION[NGL_SESSION_INDEX]["FLYINGBEE"])) {
 			self::errorMessage("bee", null, "You must login to use the Terminal");
 		}
@@ -72,6 +73,14 @@ class nglBee extends nglFeeder implements inglFeeder {
 			}
 		} else {
 			$this->error = true;
+		}
+	}
+
+	public function bzzzfile($sFilepath) {
+		if($sBuffer = @\file_get_contents($sFilepath)) {
+			$this->bzzz($sBuffer);
+		} else {
+			self::errorMessage("bee", null, "File not found: ".$sFilepath);
 		}
 	}
 
@@ -128,7 +137,7 @@ class nglBee extends nglFeeder implements inglFeeder {
 			} else {
 				$sCmd = \substr($sCmd, 1);
 				\array_shift($aCommand);
-				\call_user_func_array([$this, "Func".$sCmd], $aCommand);
+				$sReturn = \call_user_func_array([$this, "Func".$sCmd], $aCommand);
 				return true;
 			}
 		} else if($sCmd==='-$:') {
@@ -220,7 +229,9 @@ class nglBee extends nglFeeder implements inglFeeder {
 	}
 
 	private function FuncSet() {
-		list($sVarname, $mValue) = \func_get_args();
+		$aArguments = \func_get_args();
+		$sVarname = $aArguments[0];
+		$mValue = \count($aArguments) > 1 ? $aArguments[1] : "";
 		if($mValue==='-$:') {
 			$this->aVars[$sVarname] = $this->output;
 		} else {
@@ -258,7 +269,10 @@ class nglBee extends nglFeeder implements inglFeeder {
 		$mValue = $this->Argument($mValue);
 		if(\is_array($mValue)) { $mValue = \implode($this->sSeparator, $mValue); }
 		$mValue = \preg_replace("/[\\\n]/is", "\n", $mValue);
-		print($mValue);
+		$mValue = \str_replace(["\\$","\\@",'\\"'],['$',"@",'"'], $mValue);
+		print($mValue."\n");
+		$this->output = "";
+		if(\ob_get_length()) { \ob_flush(); }
 	}
 
 	private function FuncLaunch() {
@@ -278,18 +292,18 @@ class nglBee extends nglFeeder implements inglFeeder {
 		}
 	}
 
-	private function Argument($mArgument, $bToRun=false) {
+	private function Argument($mArgument, $bToRun=false, $bSpaceToJson=true) {
 		if(\is_array($mArgument)) {
 			foreach($mArgument as &$mArg) {
-				$mArg = $this->Argument($mArg);
+				$mArg = $this->Argument($mArg, false, $bSpaceToJson);
 			}
 			unset($mArg);
 			return $mArgument;
 		}
 
 		$sArgument = \trim($mArgument);
-		if(!\preg_match("/\"(.*?)\"/", $sArgument) && \strpos($sArgument, " ")) { $sArgument = \json_encode(\explode(" ", $sArgument)); }
-		$sArgument = \trim($sArgument, '"');
+		if($bSpaceToJson && !\preg_match("/\"(.*?)\"/", $sArgument) && \strpos($sArgument, " ")) { $sArgument = \json_encode(\explode(" ", $sArgument)); }
+		$sArgument = self::call()->trimOnce($sArgument, '"');
 
 		if($sArgument==='-$:') {
 			return ($bToRun) ? [$this->output] : $this->output;
@@ -314,8 +328,8 @@ class nglBee extends nglFeeder implements inglFeeder {
 						} else if($sArgument==":null:") {
 							return [null];
 						} else if(\is_array($mValue)) {
-							$aArgs[$mKey] = $this->Argument($mValue, $bToRun);
-						} else if(!\is_array($mValue) && preg_match_all("/\{(\\$|@)([a-z][0-9a-z_]*)\}/is", $mValue, $aMatchs, PREG_SET_ORDER)) {
+							$aArgs[$mKey] = $this->Argument($mValue, $bToRun, false);
+						} else if(!\is_array($mValue) && preg_match_all("/\{(?<!\\\\)(\\$|@)([a-z][0-9a-z_]*)\}/is", $mValue, $aMatchs, PREG_SET_ORDER)) {
 							if($mValue==$aMatchs[0][0] && array_key_exists($aMatchs[0][2], $this->aVars)) {
 								$aArgs[$mKey] = $this->aVars[$aMatchs[0][2]];
 							} else if($mValue==$aMatchs[0][0] && \defined($aMatchs[0][2])) {
@@ -348,13 +362,15 @@ class nglBee extends nglFeeder implements inglFeeder {
 								$aArgs[$mKey] = \str_replace('-$:', $sReplace, $mValue);
 							}
 						}
+						
+						$aArgs[$mKey] = \str_replace(["\\$","\\@"],['$',"@"], $aArgs[$mKey]);
 					}
 
 					return $aArgs;
 				}
 			}
 
-			if(\preg_match_all("/\{(\\$|@)([a-z][0-9a-z_]*)\}/is", $sArgument, $aMatchs, PREG_SET_ORDER)) {
+			if(\preg_match_all("/\{(?<!\\\\)(\\$|@)([a-z][0-9a-z_]*)\}/is", $sArgument, $aMatchs, PREG_SET_ORDER)) {
 				// variables
 				if($sArgument==$aMatchs[0][0] && \array_key_exists($aMatchs[0][2], $this->aVars)) {
 					return ($bToRun) ? [$this->aVars[$aMatchs[0][2]]] : $this->aVars[$aMatchs[0][2]];

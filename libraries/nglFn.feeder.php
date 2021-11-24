@@ -1230,9 +1230,13 @@ class nglFn extends nglTrunk {
 		return $vRGB;
 	}
 
-	public function conf($sObjectName) {
+	public function conf($sObjectName, $sKey=null, $sValue=null) {
 		if($obj = self::call($sObjectName)) {
-			return $obj->__configFile__();
+			if($sKey!==null) {
+				return $obj->__configFileValue__($sKey, $sValue);
+			} else {
+				return $obj->__configFile__();
+			}
 		}
 	}
 
@@ -3061,6 +3065,11 @@ class nglFn extends nglTrunk {
 		if($fBranchClose!==null) { $mOutput[] = $fBranchClose($aRow, 0); }
 		
 		return $mOutput;
+	}
+
+	public function trimOnce($sString, $sChar) {
+		$sChar = \preg_quote($sChar);
+		return \preg_replace("/^([$sChar])?(.*?)([$sChar])?$/", '$2', $sString);
 	}
 
 	/** FUNCTION {

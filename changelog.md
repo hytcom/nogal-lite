@@ -1,3 +1,29 @@
+# 3.0.15 - 202111240100
+## general
+- nuevo archivo **constants.php** invocado en **config.php**
+- depuración de algunos componentes
+
+## alvin
+- **savekeys** ya no sobreescribe claves existentes
+
+## bee
+- nuevo método **bzzzfile**
+- fix error en **FuncPrint**
+- **FuncSet** ahora acepta un solo argumento, en cuyo caso lo setea como vacio
+- fix en la toma de argumentos derivado de las mejoras en la versión por terminal
+- se implementa el uso de **\@** y **\$** dentro de **{ }**
+
+## files
+- **copyr** ahora copia archivos ocultos por default
+
+## fn
+- se modificó el método **conf**, para que ejecute el método **\_\_configfilevalue\_\_** del objeto pasado
+- nuevo método **trimOnce**
+
+## trunk
+- nuevo método **__configFileValue__** que permite modificar valores en el archivo de configuración del objeto
+
+________________________________________________________________________________
 # 3.0.00 - 202111181900
 ## general
 - nuevos componentes relacionados a **fn:sow**
