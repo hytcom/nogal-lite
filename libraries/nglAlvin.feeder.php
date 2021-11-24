@@ -134,7 +134,7 @@ SQL;
 			if($sKey===null) {
 				if(\file_exists($this->sAlvinPath.NGL_DIR_SLASH."private.key") && NGL_ALVIN!==null) {
 					$sKey = \file_get_contents($this->sAlvinPath.NGL_DIR_SLASH."private.key");
-				} else {
+				} else if(NGL_ALVIN===null) {
 					return self::errorMessage($this->object, 1008);
 				}
 			}
@@ -143,7 +143,7 @@ SQL;
 			if($sKey===null) {
 				if(\file_exists($this->sAlvinPath.NGL_DIR_SLASH."public.key") && NGL_ALVIN!==null) {
 					$sKey = \file_get_contents($this->sAlvinPath.NGL_DIR_SLASH."public.key");
-				} else {
+				} else if(NGL_ALVIN===null) {
 					return self::errorMessage($this->object, 1007);
 				}
 			}
