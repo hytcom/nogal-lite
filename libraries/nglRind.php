@@ -253,7 +253,7 @@ namespace nogal {
 		final public function __init__() {
 			// includes
 			if(isset($this->CONFIG["includes"])) {
-				if($this->CONFIG["includes"]["use"]) {
+				if(!empty($this->CONFIG["includes"]["use"])) {
 					$aIncludes = [];
 					foreach($this->CONFIG["includes"] as $sKey => $sFilePath) {
 						$aIncludes[$sKey] = self::call()->sandboxPath($sFilePath);
@@ -263,14 +263,14 @@ namespace nogal {
 			}
 			
 			// variables
-			if(isset($this->CONFIG["variables"])) {
+			if(isset($this->CONFIG["variables"]) && \count($this->CONFIG["variables"])) {
 				foreach($this->CONFIG["variables"] as $sVarname => $mValue) {
 					$this->setSET($sVarname, $mValue);
 				}
 			}
 			
 			// variables request
-			if(isset($this->CONFIG["request"])) {
+			if(isset($this->CONFIG["request"]) && \count($this->CONFIG["request"])) {
 				foreach($this->CONFIG["request"] as $sVarname => $mValue) {
 					$this->setSET($sVarname, $mValue, $sVarname);
 				}

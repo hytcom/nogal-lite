@@ -103,14 +103,26 @@ class nglTrunk extends nglRoot {
 				$sValue = '"'.$sValue.'"';
 			}
 
+			$aSections = $this->ConfigFileSections(\file(NGL_PATH_CONF.NGL_DIR_SLASH.$this->object.".conf"));
 			$aConfig = self::parseConfigFile(NGL_PATH_CONF.NGL_DIR_SLASH.$this->object.".conf", true);
-			if(\array_key_exists($sKey, $aConfig["arguments"])) {
-				$sContent = \file_get_contents(NGL_PATH_CONF.NGL_DIR_SLASH.$this->object.".conf");
-				$sContent = \preg_replace("/".$sKey." *=(.*?)\n/is", $sKey." = ".$sValue."\n", $sContent);
+
+			$aKey = \explode(".", $sKey, 2);
+			if(\array_key_exists($aKey[0], $aConfig)) {
 				$bUpdated = true;
+				if(\array_key_exists($aKey[1], $aConfig[$aKey[0]])) {
+					$aSections[$aKey[0]] = \preg_replace("/".\preg_quote($aKey[1], "/")." *=(.*?)\n/is", $aKey[1]." = ".$sValue."\n", $aSections[$aKey[0]]);
+				} else {
+					$aSections[$aKey[0]] .= $aKey[1]." = ".$sValue."\n";
+				}
 			}
 
 			if($bUpdated) {
+				$sContent = "";
+				foreach($aSections as $sSection => $sCode) {
+					if($sContent!="") { $sContent .= "\n"; }
+					$sContent .= "[".$sSection."]\n".$sCode;
+				}	
+
 				if(\is_writeable(NGL_PATH_CONF)) {
 					\file_put_contents(NGL_PATH_CONF.NGL_DIR_SLASH.$this->object.".conf", $sContent);
 					return true;
@@ -125,6 +137,28 @@ class nglTrunk extends nglRoot {
 		} else {
 			return "The config file doesn't exists\n";
 		}
+	}
+
+	final private function ConfigFileSections($aContent) {
+		$aSections = [];
+		$sSection = null;
+		$sSectionContent = "";
+		$sPrevius = "-";
+		foreach($aContent as $sLine) {
+			if(\trim($sPrevius)=="" && \trim($sLine)=="") { continue; }
+			$sPrevius = $sLine;
+			if(\preg_match("/^\[([a-z-A-Z0-9\-\_]+)\]\s+$/is", $sLine, $aMatch)) {
+				if($sSection!==null) {
+					$aSections[$sSection] = $sSectionContent;
+					$sSectionContent = "";
+				}
+				$sSection = $aMatch[1];
+			} else {
+				$sSectionContent .= $sLine;
+			}
+		}
+		$aSections[$sSection] = $sSectionContent;
+		return $aSections;
 	}
 
 	final public function __errorMode__($sMode=NGL_HANDLING_ERRORS_MODE) {

@@ -1866,21 +1866,24 @@ class nglFn extends nglTrunk {
 		"type" : "public",
 		"description" : "
 			Comprueba si <b>$aArray</b> es un Array de Arrays. 
-			Con <b>$bStrict</b> FALSE sólo chequeará que el primer y ultimo valor de <b>$aArray</b> sean un arrays y tengan las mismas claves.
-			Si es TRUE verificará que todos los valores sean del tipo array y tengan las mismas claves
+			<b>$bCheckMode</b>
+				NULL = chequeará que el primer y ultimo valor de <b>$aArray</b> sean un arrays
+				FALSE = chequeará que el primer y ultimo valor de <b>$aArray</b> sean un arrays y tengan las mismas claves.
+				TRUE = verificará que todos los valores sean del tipo array y tengan las mismas claves
 		",
 		"parameters" : { 
 			"$aArray" : ["array", "Array a comprobar"], 
-			"$bStrict" : ["boolean", "Activa o desactiva el modo estricto", "false"]
+			"$bCheckMode" : ["boolean", "modo de chequeo", "false"]
 		},
 		"return" : "boolean"
 	} **/
-	public function isArrayArray($aArray, $bStrict=false) {
+	public function isArrayArray($aArray, $bCheckMode=false) {
 		if(\is_array($aArray)) {
 			\reset($aArray);
-			if(!$bStrict) {
+			if(!$bCheckMode) {
 				$aFirst = \current($aArray);
 				$aLast = \end($aArray);
+				if($bCheckMode===null) { return (\is_array($aFirst) && \is_array($aLast)); }
 				return (\is_array($aFirst) && \is_array($aLast) && (\array_keys($aFirst)==\array_keys($aLast)));
 			}
 
@@ -2410,6 +2413,12 @@ class nglFn extends nglTrunk {
 		if(\file_exists($sSource)) {
 			if(\is_dir($sSource)) { $sNewName = null; }
 			if($sNewName===null) {
+				if(!\file_exists($sDestine)) {
+					if(!@\mkdir($sNewName, NGL_CHMOD_FOLDER)) {
+						self::errorMessage("fn", null, $sDestine." doesn't exists and cannot be created", "die");
+						return false;
+					}
+				}
 				$source = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($sSource, \RecursiveDirectoryIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
 				foreach($source as $item) {
 					$sDestinePath = $sDestine.NGL_DIR_SLASH.$source->getSubPathname();

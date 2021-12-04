@@ -24,17 +24,14 @@ class nglBee extends nglFeeder implements inglFeeder {
 	private $aLibs;
 	private $aVars;
 	private $aLoops;
+	private $aIfs;
 	private $sSeparator;
 	private $bDump;
+	private $sHelp;
 
 	final public function __init__($mArguments=null) {
 		if(!\defined("NGL_BEE") || NGL_BEE===null || NGL_BEE===false) {
-			if(NGL_TERMINAL) {
-				$this->__errorMode__("shell");
-				self::errorMode("shell");
-			} else {
-				$this->__errorMode__("die");
-			}
+			$this->__errorMode__("die");
 			self::errorMessage("bee", null, "Bee is not available");
 		}
 
@@ -42,6 +39,7 @@ class nglBee extends nglFeeder implements inglFeeder {
 		$this->aLibs = self::Libraries();
 		$this->aObjs = [];
 		$this->aLoops = [];
+		$this->aIfs = [];
 		$this->sSeparator = "\t";
 		$this->bDump = false;
 
@@ -52,6 +50,46 @@ class nglBee extends nglFeeder implements inglFeeder {
 		];
 		if(isset($_SESSION)) { $aVars["_SESSION"] = $_SESSION; }
 		$this->aVars = $aVars;
+
+$this->sHelp = <<<HELP
+
+--------------------------------------------------------------------------------
+	nogal bee -S:
+--------------------------------------------------------------------------------
+Uso:
+	php bee [OPTIONS] <COMMAND>
+	php bee [OPTIONS] -m"<COMMAND><SEPARATOR><COMMAND>"
+	php bee [OPTIONS] (modo consola. para finalizar, usar bzzz)
+
+Comandos:
+	Las sintaxis de los comandos pueden ser:
+		<OBJECT> <METHOD> [<ARGUMENT> ... <ARGUMENT>]
+		<OBJECT>:<METHOD> [<ARGUMENT> ... <ARGUMENT>]
+
+Opciones:
+	-e    variable de entorno key=value
+	-h    ayuda
+	-m    permite ejecutar multiples comandos en línea
+	-m@   multiples comandos con un separador distinto a |, en este caso, @
+	-r    retorna el valor crudo de la respusts (raw)
+	-f    carga el código a ejecutar, desde un archivo
+	-s    modo silencioso, no tiene salida
+	-v    nogal versión
+
+Ejemplo
+	# en línea
+	php bee fn:imya
+
+	# consola
+	php bee
+	file load https://cdn.upps.cloud/json/material-design-colors.json
+	-$: read
+	shift convert ["-$:", "json-ttable"]
+	bzzz
+
+--------------------------------------------------------------------------------
+
+HELP;
 	}
 
 	public function bzzz($sSentences) {
@@ -101,6 +139,87 @@ class nglBee extends nglFeeder implements inglFeeder {
 		return $this;
 	}
 
+	public function terminal() {
+		$this->__errorMode__("shell");
+		if(!NGL_TERMINAL) { self::out("\nThis method is available only on a terminal\n", "error"); exit(); }
+		if(empty($GLOBALS["argv"])) { exit("NULL"); }
+
+		$aArguments = $GLOBALS["argv"];
+		$aOptions = \getopt("h::s::r::m::f::v::e::");
+		$bSilent = $bReturn = $bFromFile = false;
+		$sBee = \basename(\array_shift($aArguments));
+
+		if(isset($aOptions["h"]) && \count($aArguments)==1) { die($this->sHelp."\n"); }
+		if(isset($aOptions["v"]) && \count($aArguments)==1) {
+			if(\file_exists(NGL_PATH_FRAMEWORK."/version")) {
+				die("v".\file_get_contents(NGL_PATH_FRAMEWORK."/version")."\n");
+			} else {
+				die("unknown version");
+			}
+		}
+
+		if(\count($aArguments)) {
+			foreach($aArguments as $k => $sArg) { if($sArg[0]=="-") { unset($aArguments[$k]); } }
+		}
+
+		$sVariables = "";
+		if(isset($aOptions["e"])) {
+			if(!\is_array($aOptions["e"])) { $aOptions["e"] = [$aOptions["e"]]; }
+			foreach($aOptions["e"] as $sVar) {
+				$aVar = \explode("=", $sVar);
+				$sVariables .= "@set ".$aVar[0]." ".$aVar[1]."\n";
+			}
+		}
+
+		if(isset($aOptions["s"])) { $bSilent = true; }
+		if(isset($aOptions["r"])) { $bReturn = true; }
+		if(isset($aOptions["f"])) {
+			if(file_exists($aOptions["f"])) {
+				$sCommand = \file_get_contents($aOptions["f"]);
+				$bFromFile = true;
+			} else {
+				self::out("\nFile not found ".$aOptions["f"]."\n", "error"); exit();
+			}
+		}
+
+		if(!$bFromFile) {
+			if($sBee=="bee" && !\count($aArguments)) {
+				$aBuffer = [];
+				while(true) {
+					$sInput = \readline();
+					if($sInput=="bzzz") { break; }
+					$aBuffer[] = $sInput;
+				}
+				$sCommand = \implode("\n",$aBuffer);
+			} else {
+				$sCommand = \implode(" ",$aArguments);
+				if(isset($aOptions["m"])) {
+					$sSplitter = empty($aOptions["m"]) ? "|" : $aOptions["m"];
+					$sBuffer = $sCommand;
+					$aBuffer = \explode($sSplitter, $sBuffer);
+					$sCommand = \implode("\n",$aBuffer);
+				}
+			}
+		}
+
+		$sResponse = $this->dump(true)->bzzz($sVariables.$sCommand);
+		if($this->error()) {
+			if(!$bReturn) {
+				self::out("\n".$sResponse."\n", "error"); exit();
+			} else {
+				exit("NULL");
+			}
+		} else {
+			if(!$bSilent) {
+				if(!$bReturn) {
+					self::out($sResponse, "success"); exit();
+				} else {
+					exit($sResponse);
+				}
+			}
+		}
+	}
+
 	private function RunCommands($aCommands) {
 		for($x=0; $x<\count($aCommands); $x++) {
 			$aCommand = $aCommands[$x];
@@ -117,6 +236,24 @@ class nglBee extends nglFeeder implements inglFeeder {
 					$this->output = $aCurrent;
 					$this->RunCommands($aSubCommands);
 				}
+				$x += \count($aSubCommands);
+
+			} else if($aCommand[0]=="@if" || $aCommand[0]=="@ifnot") {
+				$sIfNot = $aCommand[0]=="@ifnot" ? "!" : "";
+				$sConditions = $this->Argument($aCommand["source"], false, false);
+				$sConditions = \str_replace([":true:", ":false:", ":null:"], ["true", "false", "null"], $sConditions);
+
+				if(\is_bool($sConditions)) {
+					$sConditions = $sConditions ? "true" : "false";
+				} else if($sConditions===null) {
+					$sConditions = "null";
+				} else if(!\is_numeric($sConditions) && \strpos($sConditions, " ")===false) {
+					$sConditions = \trim($sConditions, '"');
+					$sConditions = '"'.$sConditions.'"';
+				}
+
+				$aSubCommands = \array_slice($aCommands, $x+1, $aCommand["to"]);
+				if(eval("return ".$sIfNot."(".$sConditions.");")) { $this->RunCommands($aSubCommands); }
 				$x += \count($aSubCommands);
 			} else {
 				$bReturn = $this->RunCmd($aCommand);
@@ -206,6 +343,14 @@ class nglBee extends nglFeeder implements inglFeeder {
 				$l = \array_pop($this->aLoops);
 				$aToRun[$l]["to"] = $x-$aToRun[$l]["from"];
 				$x--;
+			} else if($sCmd=="@if" || $sCmd=="@ifnot") {
+				$this->aIfs[] = $x;
+				$aCommand = \explode(" ", $sSentence, 2);
+				$aToRun[$x] = [$aCommand[0], "source"=>$aCommand[1], "from"=>$x+1, "to"=>$x+2];
+			} else if($sCmd=="endif") {
+				$l = \array_pop($this->aIfs);
+				$aToRun[$l]["to"] = $x-$aToRun[$l]["from"];
+				$x--;
 			} else {
 				$aToRun[$x] = $aCommand;
 			}
@@ -247,21 +392,40 @@ class nglBee extends nglFeeder implements inglFeeder {
 	// @get ENV now
 	// @get ENV [now, date]
 	private function FuncGet() {
-		@list($sVarname, $mIndex) = \func_get_args();
-		$mVar = ($sVarname==='-$:') ? $this->output : $this->aVars[$sVarname];
-		$this->output = $mVar;
-		if($mIndex!==null) {
-			$mIndex = $this->Argument($mIndex);
-			if(\is_array($mIndex)) {
-				foreach($mIndex as $sIndex) {
-					if(\array_key_exists($sIndex, $this->output)) {
-						$this->output = $this->output[$sIndex];
-					}
-				}
-			} else {
-				$this->output = $this->output[$mIndex];
-			}
+		if(func_num_args()>1) {
+			@list($sVarname, $mIndex) = \func_get_args();
+		} else {
+			@list($sVarname) = \func_get_args();
+			$mIndex = null;
 		}
+		
+		if($sVarname==='-$:') { $sVarname = $this->output; }
+		if(isset($this->aVars[$sVarname])) {
+			$this->output = $this->aVars[$sVarname];
+			if($mIndex!==null) {
+				$mIndex = $this->Argument($mIndex);
+				if(\is_array($mIndex)) {
+					foreach($mIndex as $sIndex) {
+						if(\array_key_exists($sIndex, $this->output)) {
+							$this->output = $this->output[$sIndex];
+						}
+					}
+				} else {
+					$this->output = $this->output[$mIndex];
+				}
+			}
+		} else {
+			$this->output = null;
+		}
+	}
+
+	private function FuncExit() {
+		$mValue = \implode(" ", \func_get_args());
+		$mValue = $this->Argument($mValue);
+		if(\is_array($mValue)) { $mValue = \implode($this->sSeparator, $mValue); }
+		$mValue = \preg_replace("/[\\\n]/is", "\n", $mValue);
+		$mValue = \str_replace(["\\$","\\@",'\\"'],['$',"@",'"'], $mValue);
+		die($mValue."\n\n");
 	}
 
 	private function FuncPrint() {
@@ -321,11 +485,11 @@ class nglBee extends nglFeeder implements inglFeeder {
 					foreach($aArgs as $mKey => $mValue) {
 						if($mValue==='-$:') {
 							$aArgs[$mKey] = $this->output;
-						} else if($sArgument==":true:") {
+						} else if($mValue==":true:") {
 							return [true];
-						} else if($sArgument==":false:") {
+						} else if($mValue==":false:") {
 							return [false];
-						} else if($sArgument==":null:") {
+						} else if($mValue==":null:") {
 							return [null];
 						} else if(\is_array($mValue)) {
 							$aArgs[$mKey] = $this->Argument($mValue, $bToRun, false);
@@ -338,7 +502,7 @@ class nglBee extends nglFeeder implements inglFeeder {
 								foreach($aMatchs as $aMatch) {
 									if(\array_key_exists($aMatch[2], $this->aVars)) {
 										$mValue = \str_replace($aMatch[0], $this->aVars[$aMatch[2]], $mValue);
-									} else if(\defined($aMatchs[2])) {
+									} else if(\defined($aMatch[2])) {
 										$mValue = \str_replace($aMatch[0], \constant($aMatchs[0][2]), $mValue);
 									}
 								}
@@ -380,11 +544,11 @@ class nglBee extends nglFeeder implements inglFeeder {
 				if($sArgument==$aMatchs[0][0] && \defined($aMatchs[0][2])) {
 					return ($bToRun) ? [\constant($aMatchs[0][2])] : \constant($aMatchs[0][2]);
 				}
-	
+
 				foreach($aMatchs as $aMatch) {
 					if(\array_key_exists($aMatch[2], $this->aVars)) {
 						$sArgument = \str_replace($aMatch[0], $this->aVars[$aMatch[2]], $sArgument);
-					} else if(\defined($aMatchs[2])) {
+					} else if(\defined($aMatch[2])) {
 						$sArgument = \str_replace($aMatch[0], \constant($aMatchs[0][2]), $sArgument);
 					}
 				}

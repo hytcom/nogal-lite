@@ -1,3 +1,38 @@
+# 3.0.20 - 202112041330
+## general
+- cambios en las configuraciones por defecto de las estructuras de assets
+- se actualizó **bee** en todas las estructuras de assets
+
+## bee
+- nuevos métodos **@if** e **@ifnot**
+- nuevo método **@exit**
+- **@get** ahora retorna null cuando la variable consultada no existe
+- **@get** ahora se utiliza **-\$:** como nombre de variable
+- fix bugs en **Arguments** al leer constantes y los valores :true:, :false: y :null:
+- cambios en la terminal
+  - se incorporó el código fuente de la terminal a la clase
+  - nuevos argumentos: **e** para variables de entorno y **v** para obtener la versión de **nogal**
+
+## fn
+- nuevo modo de chequeo en el método **isArrayArray**
+  - NULL = **true** cuando el primer y último valor sean arrays
+  - FALSE = **true** cuando el primer y último valor sean arrays y tengan las mismas claves
+  - TRUE = **true** cuando todos los valores sean arrays y tengan las mismas claves
+
+## rind
+- fix bug al leer secciones vacias en el archivo de configuración
+
+## root
+- fix bug en **parseConfigString** cuando las secciones estan vacías
+
+## shift
+- se incorporó la opción **arrayarray** para el chequeo arrays bidimensionales. Default: null
+
+## trunk
+- se mejoró el método **__configFileValue__** ahora se puede editar cualquier sección del archivo **config**
+- nuevo método **ConfigFileSections**
+
+________________________________________________________________________________
 # 3.0.15 - 202111240830
 ## general
 - nuevo archivo **constants.php** invocado en **config.php**

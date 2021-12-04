@@ -407,6 +407,7 @@ class nglShift extends nglTrunk {
 		$sEnclosed	 	= (isset($vOptions["enclose"])) ? $vOptions["enclose"] : '"';
 		$sEscaped	 	= (isset($vOptions["escape"])) ? $vOptions["escape"] : "\\";
 		$sEOL			= (isset($vOptions["eol"])) ? $vOptions["eol"] : "\r\n";
+		$bArrayArray	= (isset($vOptions["arrayarray"])) ? $vOptions["arrayarray"] : null;
 	
 		$sCSV = "";
 		if(!\is_array($aData)) { return ""; }
@@ -422,7 +423,7 @@ class nglShift extends nglTrunk {
 			$sCSV .= \implode($sJoiner, $aColnames).$sEOL;
 		}
 		
-		if(self::call()->isarrayarray($aData)) {
+		if(self::call()->isarrayarray($aData, $bArrayArray)) {
 			\reset($aData);
 			foreach($aData as $mLineKey => $aLine) {
 				foreach($aLine as $mColumnKey => $sColumn) {
@@ -695,12 +696,13 @@ class nglShift extends nglTrunk {
 		"return" : "array"
 	} **/
 	public function fixedImplode($aString, $vOptions=null) {
-		$sFill		= (isset($vOptions["fill"])) ? $vOptions["fill"] : " ";
-		$sJoiner	= (isset($vOptions["joiner"])) ? $vOptions["joiner"] : null;
-		$nJoiner	= (isset($vOptions["joiner"])) ? \strlen($sJoiner) : 0;
-		$sEOL		= (isset($vOptions["eol"])) ? $vOptions["eol"] : "\n";
+		$sFill			= (isset($vOptions["fill"])) ? $vOptions["fill"] : " ";
+		$sJoiner		= (isset($vOptions["joiner"])) ? $vOptions["joiner"] : null;
+		$nJoiner		= (isset($vOptions["joiner"])) ? \strlen($sJoiner) : 0;
+		$sEOL			= (isset($vOptions["eol"])) ? $vOptions["eol"] : "\n";
+		$bArrayArray	= (isset($vOptions["arrayarray"])) ? $vOptions["arrayarray"] : null;
 
-		$bRecursive = self::call()->isarrayarray($aString);
+		$bRecursive = self::call()->isarrayarray($aString, $bArrayArray);
 		
 		if(!isset($vOptions["positions"]) || !\is_array($vOptions["positions"]) || !\count($vOptions["positions"])) {
 			if($bRecursive) {
@@ -738,9 +740,9 @@ class nglShift extends nglTrunk {
 		return $sString;
 	}
 
-	public function jsObject($aData) {
+	public function jsObject($aData, $bArrayArray=null) {
 		$aValues = [];
-		if(\is_array($aData) && \count($aData) && self::call()->isarrayarray($aData)) {
+		if(\is_array($aData) && \count($aData) && self::call()->isarrayarray($aData, $bArrayArray)) {
 			$aFirst = \current($aData);
 			$aColnames = array_keys($aFirst);
 			$aRegexs = self::call("sysvar")->REGEX;
@@ -917,9 +919,10 @@ class nglShift extends nglTrunk {
 		"return" : "string"
 	} **/
 	public function html($aData=null, $vOptions=[]) {
-		$sFormat	= (isset($vOptions["format"])) ? $vOptions["format"] : "table";
-		$sClassName	= (isset($vOptions["class"])) ? $vOptions["class"] : "class";
-		$sClasses	= (isset($vOptions["classes"])) ? $vOptions["classes"] : "";
+		$sFormat		= (isset($vOptions["format"])) ? $vOptions["format"] : "table";
+		$sClassName		= (isset($vOptions["class"])) ? $vOptions["class"] : "class";
+		$sClasses		= (isset($vOptions["classes"])) ? $vOptions["classes"] : "";
+		$bArrayArray	= (isset($vOptions["arrayarray"])) ? $vOptions["arrayarray"] : null;
 
 		$sFormat = \strtolower($sFormat);
 		switch($sFormat) {
@@ -949,7 +952,7 @@ class nglShift extends nglTrunk {
 		$sHTML = "<".$sTagTable." class=\"".$sClassName." ".$sClasses."\">\n";
 
 		// contenido del bloque
-		if(self::call()->isarrayarray($aData)) {
+		if(self::call()->isarrayarray($aData, $bArrayArray)) {
 			// cabeceras
 			$aHeaders = [];
 			foreach($aData as $aRow) {
@@ -1615,12 +1618,13 @@ class nglShift extends nglTrunk {
 	}
 
 	public function textTable($aData, $vOptions=[]) {
-		if(!self::call()->isarrayarray($aData)) { return ""; }
-
+		$bArrayArray	= (isset($vOptions["arrayarray"])) ? $vOptions["arrayarray"] : null;
 		$sHeaderAlign	= (isset($vOptions["tthalign"])) ? \strtolower($vOptions["tthalign"]) : "center";
 		$sBodyAlign		= (isset($vOptions["ttdalign"])) ? \strtolower($vOptions["ttdalign"]) : "left";
 		$nHeaderAlign	= ($sHeaderAlign=="left") ? STR_PAD_RIGHT : ($sHeaderAlign=="right" ? STR_PAD_LEFT : STR_PAD_BOTH);
 		$nBodyAlign		= ($sBodyAlign=="left") ? STR_PAD_RIGHT : ($sBodyAlign=="right" ? STR_PAD_LEFT : STR_PAD_BOTH);
+		
+		if(!self::call()->isarrayarray($aData, $bArrayArray)) { return ""; }
 
 		$aCells = \array_fill_keys(\array_keys(\current($aData)), 0);
 		$nCells = \count($aCells);

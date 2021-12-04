@@ -1,18 +1,8 @@
 <?php
 
-/** bee for shell --------------------------------------------------------------
-Para activar la consola se deberá definir la constante NGL_BEE como true y
-configurar la ruta del arrancador del framework
-
-$ php bee <COMMAND>						modo inline
-$ php bee -s <COMMAND>					modo inline silencioso
-$ php bee -r <COMMAND>					modo inline retorno (valor crudo)
-$ php bee -m "<COMMAND>|<COMMAND>"		modo multiple
-$ php bee -m@ "<COMMAND>@<COMMAND>"		modo multiple con @ como separador
-$ php bee -s -m "<COMMAND>|<COMMAND>"	modo multiple silencioso
-$ php bee -r -m "<COMMAND>|<COMMAND>"	modo multiple retorno (valor crudo)
-$ php bee -s							modo consola silencioso. para finalizar, usar bzzz
-$ php bee								modo consola. para finalizar, usar bzzz
+/** bee for terminal -----------------------------------------------------------
+Para activar la consola deberás configurar la ruta del arrancador del framework
+y definir la constante NGL_BEE como true en el archivo config.php o aquí
 ------------------------------------------------------------------------------*/
 
 // config
@@ -22,54 +12,7 @@ $FRAMEWORKPATH = __DIR__."/nogal.php";
 // run
 if(\file_exists($FRAMEWORKPATH)) {
 	require_once($FRAMEWORKPATH);
-	$bSilent = $bReturn = false;
-	$sBee = \basename(\array_shift($argv));
-
-	if(NGL_TERMINAL && $bee = $ngl("bee")) {
-		$aOptions = \getopt("s::r::m::");
-		if(\count($argv)) {
-			foreach($argv as $k => $sArg) { if($sArg[0]=="-") { unset($argv[$k]); } }
-		}
-		if(isset($aOptions["s"])) { $bSilent = true; }
-		if(isset($aOptions["r"])) { $bReturn = true; }
-		if($sBee=="bee" && !\count($argv)) {
-			$aBuffer = [];
-			while(true) {
-				$sInput = \readline();
-				if($sInput=="bzzz") { break; }
-				$aBuffer[] = $sInput;
-			}
-			$sCommand = \implode("\n",$aBuffer);
-		} else {
-			$sCommand = \implode(" ",$argv);
-			if(isset($aOptions["m"])) {
-				$sSplitter = empty($aOptions["m"]) ? "|" : $aOptions["m"];
-				$sBuffer = $sCommand;
-				$aBuffer = \explode($sSplitter, $sBuffer);
-				$sCommand = \implode("\n",$aBuffer);
-			}
-		}
-
-		$sResponse = $bee->dump(true)->bzzz($sCommand);
-		if($bee->error()) {
-			if(!$bReturn) {
-				$ngl()->out("\n".$sResponse."\n", "error");
-			} else {
-				exit("NULL");
-			}
-		} else {
-			if(!$bSilent) {
-				if(!$bReturn) {
-					$ngl()->out($sResponse, "success");
-				} else {
-					exit($sResponse);
-				}
-			}
-		}
-		exit();
-	} else {
-		$ngl()->out("\nBee only bzzz on Terminal\n", "error");
-	}
+	$ngl("bee")->terminal();
 } else {
 	exit("\nFile could not be found: ".$FRAMEWORKPATH."\n");
 }

@@ -968,6 +968,7 @@ class nglRoot {
 				$bSection = \preg_match("/^(\[)([a-zA-Z0-9\_\.\-]+)(\])/is", $sLine, $aMatchs);
 				if($bSection) {
 					$sSection = $aMatchs[2];
+					$aData[$sSection] = [];
 					continue;
 				}
 			}
