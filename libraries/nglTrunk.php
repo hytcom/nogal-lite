@@ -140,7 +140,7 @@ class nglTrunk extends nglRoot {
 		}
 	}
 
-	final private function ConfigFileSections($aContent) {
+	private function ConfigFileSections($aContent) {
 		$aSections = [];
 		$sSection = null;
 		$sSectionContent = "";

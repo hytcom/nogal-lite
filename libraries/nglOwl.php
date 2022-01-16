@@ -1047,13 +1047,13 @@ SQL);
 		return (strtolower($sOutputMode)=="jsql") ? $sView : $this->jsql->query($sView, $this->view_eol);
 	}
 
-	final private function AlvinInit() {
+	private function AlvinInit() {
 		if(NGL_ALVIN===null || !$this->alvin) { return false; }
 		if(!self::call("alvin")->loaded()) { return (self::call("alvin")->autoload()===false) ? false : true; }
 		return true;
 	}
 
-	final private function AlvinSQL($sJSQL, $bOnlyWhere=false) {
+	private function AlvinSQL($sJSQL, $bOnlyWhere=false) {
 		if($this->AlvinInit()) {
 			$sTableName = ($this->bChildMode) ? $this->sChildTable : $this->sObject;
 			$sRole = self::call("alvin")->role();

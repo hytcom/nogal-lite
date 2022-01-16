@@ -182,7 +182,7 @@ class nglTutor extends nglTrunk {
 		return $this->Zeros($aData);
 	}
 
-	final private function TutorCaller($sCaller) {
+	private function TutorCaller($sCaller) {
 		if($sCaller!==__FILE__) {
 			\trigger_error("Can't instantiate outside of the «tutor» class", E_USER_ERROR);
 		}

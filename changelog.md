@@ -1,3 +1,8 @@
+# 3.1.01 - 202201161800
+## general
+- fix **final private** para **PHP8**
+
+________________________________________________________________________________
 # 3.1.0 - 202201161000
 ## general
 - se aplicó el uso de argumentos como variables en todas las clases
