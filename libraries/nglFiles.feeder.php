@@ -408,7 +408,7 @@ class nglFiles extends nglFeeder implements inglFeeder {
 		$aPath = \glob($sPath, GLOB_BRACE);
 
 		$aDirs  = [];
-		$file = self::call("file");
+		$file = self::call("file")->extend_info(true);
 		foreach($aPath as $sFile) {
 			$bDir = is_dir($sFile);
 			if($sMode=="info") {

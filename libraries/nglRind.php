@@ -711,7 +711,7 @@ namespace nogal {
 		}
 
 		public function buildcache() {
-			$this->args(["curdir"=>$this->argument("gui"), "cache_mode"=>"cache"]);
+			$this->args(["curdir"=>$this->gui, "cache_mode"=>"cache"]);
 			$this->SetPaths();
 			$this->flushCache(true);
 
@@ -1177,7 +1177,7 @@ namespace nogal {
 			}
 
 			// aborción por HTTP
-			if((!\ini_get("allow_url_fopen") || !$this->argument("http_support")) && $sScheme=="http") {
+			if((!\ini_get("allow_url_fopen") || !$this->http_support) && $sScheme=="http") {
 				if(\ini_get("allow_url_fopen")) {
 					self::errorMessage($this->object, 1001, $sFileName);
 				} else {
@@ -1233,7 +1233,7 @@ namespace nogal {
 			list($sFileName,$sCacheMode) = $this->getarguments("template,cache_mode", \func_get_args());
 			$sCacheMode = \strtolower($sCacheMode);
 
-			$sCacheFile = $this->argument("cache_file");
+			$sCacheFile = $this->cache_file;
 			if($this->sPHPFile===null) {
 				$aBacktrace = \debug_backtrace(false);
 				$sPHPFile = $aBacktrace[0]["file"];
@@ -1245,13 +1245,13 @@ namespace nogal {
 			// si no se especifica un nombre de plantilla se intentará leer el archivo HTML
 			// con el mismo nombre de archivo PHP, dentro de la carpeta GUI correspondiente
 			if(empty($sFileName)) { $sFileName = $vItSelf["filename"].".html"; }
-			
+
 			$sFilePath			= $this->PathBuilder($sFileName);
 			$this->aFilePath	= \pathinfo($sFilePath);
 			$sDirName 			= self::call()->clearPath($this->aFilePath["dirname"]);
 			$sGUIPath 			= $this->attribute("gui_path");
 			$sBaseDir 			= self::call("files")->basePaths($sGUIPath, $sDirName);
-			$sFolder			= \str_replace($sBaseDir, "", $sDirName);
+			$sFolder			= (\substr($this->gui,0,2)!="./") ? \str_replace($sBaseDir, "", $sDirName) : \substr(\str_replace(NGL_PATH_PRICKOUT, "", $sDirName),0,(\strlen($this->gui)+1));
 			$sCachePath			= $this->attribute("cache_path");
 			$sCacheDir			= self::call()->clearPath($sCachePath.NGL_DIR_SLASH.$sFolder);
 
@@ -1433,7 +1433,7 @@ namespace nogal {
 			// die($sSource);
 			// file_put_contents($sCacheDir.NGL_DIR_SLASH."rindstamplog_4_".date("is").".txt", $sSource);
 
-			if($this->argument("fill_urls")) {
+			if($this->fill_urls) {
 				$sSource = $this->FillURL($sSource);
 				// file_put_contents($sCacheDir.NGL_DIR_SLASH."rindstamplog_5_".date("is").".txt", $sSource);
 			}
@@ -1446,7 +1446,7 @@ namespace nogal {
 			// die($sSource);
 			// file_put_contents($sCacheDir.NGL_DIR_SLASH."rindstamplog_7_".date("is").".txt", $sSource);
 
-			$sPHPCode = $this->argument("php_code");
+			$sPHPCode = $this->php_code;
 			if(!empty($sPHPCode)) {
 				$sPHPCode = \preg_replace("/^(<\?(php)?[\s]*)(.*?)([\s]*\?>)$/is", "\\3", $sPHPCode);
 				$sSource = "<?php ".$sPHPCode."?>".$sSource;
@@ -1478,7 +1478,7 @@ namespace nogal {
 			// die($sSource);
 			// file_put_contents($sCacheDir.NGL_DIR_SLASH."rindstamplog_4_".date("is").".txt", $sSource);
 
-			if($this->argument("fill_urls")) {
+			if($this->fill_urls) {
 				$sSource = $this->FillURL($sSource);
 				// file_put_contents($sCacheDir.NGL_DIR_SLASH."rindstamplog_5_".date("is").".txt", $sSource);
 			}
@@ -1492,7 +1492,7 @@ namespace nogal {
 			// die($sSource);
 			// file_put_contents($sCacheDir.NGL_DIR_SLASH."rindstamplog_7_".date("is").".txt", $sSource);
 
-			$sPHPCode = $this->argument("php_code");
+			$sPHPCode = $this->php_code;
 			if(!empty($sPHPCode)) {
 				$sPHPCode = \preg_replace("/^(<\?(php)?[\s]*)(.*?)([\s]*\?>)$/is", "\\3", $sPHPCode);
 				$sSource = "<?php ".$sPHPCode."?>".$sSource;
@@ -1620,7 +1620,7 @@ namespace nogal {
 				// aborción por HTTP
 				$sScheme = \parse_url($sFileName, PHP_URL_SCHEME);
 				$sScheme = \strtolower($sScheme);
-				if((!\ini_get("allow_url_fopen") || !$this->argument("http_support")) && ($sScheme=="http" || $sScheme=="https")) {
+				if((!\ini_get("allow_url_fopen") || !$this->http_support) && ($sScheme=="http" || $sScheme=="https")) {
 					if(\ini_get("allow_url_fopen")) {
 						self::errorMessage($this->object, 1001, $sFileToInc);
 					} else {
@@ -1638,7 +1638,7 @@ namespace nogal {
 					self::errorMessage($this->object, 1003, $sFileToInc);
 				}
 
-				if($this->argument("clear_utf8_bom")) {
+				if($this->clear_utf8_bom) {
 					$sTemplate = \preg_replace("/^\xEF\xBB\xBF/s", "", $sTemplate);
 				}
 
@@ -1833,8 +1833,7 @@ namespace nogal {
 			$sRoot = $this->argument("root", \getcwd());
 			$sGUI = $this->argument("gui", \getcwd());
 			$sCache = $this->argument("cache", \getcwd());
-			$sCurrentDir = $this->argument("curdir");
-			$sScheme = $this->argument("scheme");
+			$sCurrentDir = $this->curdir;
 
 			// PATHs
 			// directorio root
@@ -1854,16 +1853,18 @@ namespace nogal {
 				}
 			}
 
-			// ruta de la carpeta GUI
-			$sGUIPath	= ($sGUI!==null) ? self::call()->clearPath($sGUI, false, NGL_DIR_SLASH, true) : $sRoot;
-			$sGUIPath 	= \realpath($sGUIPath);
-			$sGUIPath 	= $sProjectPath.\substr($sGUIPath, $nProjectPath);
-			$sGUIPath 	= self::call()->clearPath($sGUIPath, false, NGL_DIR_SLASH, true);
-
 			// ruta del archivo .php que hace la peticion
 			if($sCurrentDir===null) {
 				$sCurrentDir = self::call()->clearPath(\dirname($this->sPHPFile), false, NGL_DIR_SLASH, true);
 			}
+
+			// ruta de la carpeta GUI
+			$bGUIFollowPath = false;
+			if(\substr($sGUI,0,2)=="./") { $bGUIFollowPath = true; $sGUI = $sCurrentDir.\substr($sGUI,1); }
+			$sGUIPath	= ($sGUI!==null) ? self::call()->clearPath($sGUI, false, NGL_DIR_SLASH, true) : $sRoot;
+			$sGUIPath 	= \realpath($sGUIPath);
+			$sGUIPath 	= $sProjectPath.\substr($sGUIPath, $nProjectPath);
+			$sGUIPath 	= self::call()->clearPath($sGUIPath, false, NGL_DIR_SLASH, true);
 
 			// rutas relativas
 			$sRelativePath	= self::call()->clearPath(\str_replace($sRoot, "", $sCurrentDir));
@@ -1871,7 +1872,7 @@ namespace nogal {
 			
 			// URLs
 			// protocolo
-			$sScheme = ($sScheme!==null) ? \strtolower($sScheme) : "http";
+			$sScheme = ($this->scheme!==null) ? \strtolower($this->scheme) : "http";
 			
 			// url del archivo .php que hace la peticion
 			$sURLSelf = self::call()->clearPath(NGL_URL.$sRelativePath);
@@ -1903,22 +1904,23 @@ namespace nogal {
 			$sTemplateURL	= self::call()->clearPath($sTemplateURL);
 
 			// atributos
-			// print("project_path: ".$sProjectPath."\n");
-			// print("root_url: ".$sRootURL."\n");
-			// print("gui_path: ".$sGUIPath."\n");
-			// print("gui_url: ".$sGUIURL."\n");
-			// print("relative_path: ".$sRelativePath."\n");
-			// print("template_url: ".$sTemplateURL."\n");
-			// print("cache_path: ".$sCachePath."\n");
-			// exit("\nfin de setpaths");
-			
 			$this->attribute("project_path", 	$sProjectPath);
-			$this->attribute("relative_path",	$sRelativePath);
+			$this->attribute("relative_path",	($bGUIFollowPath ? "" :$sRelativePath));
 			$this->attribute("cache_path", 		$sCachePath);
 			$this->attribute("root_url", 		$sRootURL);
 			$this->attribute("gui_path", 		$sGUIPath);
 			$this->attribute("gui_url", 		$sGUIURL);
 			$this->attribute("template_url", 	$sTemplateURL);
+
+			// \nogal\dump([
+			// 	"project_path" => $this->attribute("project_path"),
+			// 	"relative_path" => $this->attribute("relative_path"),
+			// 	"gui_path" => $this->attribute("gui_path"),
+			// 	"cache_path" => $this->attribute("cache_path"),
+			// 	"root_url" => $this->attribute("root_url"),
+			// 	"gui_url" => $this->attribute("gui_url"),
+			// 	"template_url" => $this->attribute("template_url")
+			// ]);
 			
 			return $this;
 		}
@@ -2022,7 +2024,7 @@ namespace nogal {
 			\ob_start();
 			include($sCacheFile);
 			$sContent = \ob_get_clean();
-			return $this->argument("trim_stamp") ? \trim($sContent) : $sContent;
+			return $this->trim_stamp ? \trim($sContent) : $sContent;
 		}
 
 		public function stampstr() {
@@ -3084,7 +3086,7 @@ namespace nogal {
 			if(isset($vArguments["from"])) { $bFrom = true; $sLoop .= $nFrom.'=\abs('.$vArguments["from"].');'; } else { $sLoop .= $nFrom.'=0;'; }
 			if(isset($vArguments["limit"])) { $bLimit = true; $sLoop .= $nLimit.'=\abs('.$vArguments["limit"].');'; } else { $sLoop .= $nLimit.'=null;'; }
 			if($sType=="number") {
-				$sLoop .= $nLimitMax.'='.$this->argument("loops_limit").';'.$this->EOL;
+				$sLoop .= $nLimitMax.'='.$this->loops_limit.';'.$this->EOL;
 				$sLoop .= 'if('.$nLimit.'===null) { '.$nLimit.' = 1; }'.$this->EOL;
 				$sLoop .= 'if('.$nLimit.'>'.$nLimitMax.') { '.$nLimit.' = '.$nLimitMax.'; }'.$this->EOL;
 				$sSetting = $sEndVar.' = ('.$nStep.'<0) ? '.$nFrom.'-'.$nLimit.' : '.$nFrom.'+'.$nLimit.';'.$this->EOL;
@@ -3293,7 +3295,6 @@ namespace nogal {
 			if(empty($sFilePath)) { self::errorMessage($this->object, 1003, "mergefile::source = ".$sFilePath); }
 			$sGUIPath	= ($sFilePath[0]==NGL_DIR_SLASH) ? $this->attribute("project_path") : $this->attribute("gui_path");
 			$sGUIPath	= self::call()->clearPath($sGUIPath, true);
-			$sCacheMode = \strtolower($this->argument("cache_mode"));
 
 			$aSubMerge = false;
 			if(isset($vArguments["submerge"])) {

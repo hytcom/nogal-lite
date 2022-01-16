@@ -1522,7 +1522,6 @@ class nglFn extends nglTrunk {
 		return  $aData;
 	}
 
-
 	/** FUNCTION {
 		"name" : "nullToEmpty", 
 		"type" : "public",
@@ -3252,6 +3251,51 @@ class nglFn extends nglTrunk {
 		}
 
 		return $bExists;
+	}
+
+	public function naming($sString, $sNotation="hungarian", $sType="m") {
+		/* Notations
+			sHungarianNotation = variables. La primer letra indica el tipo de dato en inglés
+			PascalCase = clases y funciones No públicas
+			camelCase = funciones públicas
+			snake_case = tablas y campos en una base de datos
+			SCREAMING_SNAKE_CASE = constantes
+			kebab-case = URLs
+		*/
+		/* Types
+			a = array
+			i = integer
+			m = mixed
+			n = number
+			s = string
+			v = vector
+		*/
+		if(\strpos($sString, "_")) {
+			$aWords = \explode("_", $sString);
+		} else if(\strpos($sString, "-")) {
+			$aWords = \explode("-", $sString);
+		} else if(\strtolower($sString)==$sString) {
+			$aWords = [$sString];
+		} else {
+			preg_match_all("/[a-z]?[A-Z][a-z0-9]+/s", $sString, $aWords);
+			$aWords = $aWords[0];
+		}
+
+		$sNotation = \strtolower($sNotation);
+		if($sNotation=="hungarian" || $sNotation=="camel" || $sNotation=="pascal") {
+			$aWords = \array_map(fn($sWord) => \ucfirst(\strtolower($sWord)), $aWords);
+		} else {
+			$aWords = \array_map(fn($sWord) => \strtolower($sWord), $aWords);
+		}
+
+		switch($sNotation) {
+			case "hungarian": return $sType.\implode("", $aWords);
+			case "pascal": return \implode("", $aWords);
+			case "camel": $aWords[0] = \strtolower($aWords[0]); return \implode("", $aWords);
+			case "snake": return \preg_replace("/\_+/s", "_", \implode("_", $aWords));
+			case "ssnake": return \preg_replace("/\_+/s", "_", \strtoupper(\implode("_", $aWords)));
+			case "kebab": return \preg_replace("/\-+/s", "-", \implode("-", $aWords));
+		}
 	}
 }
 

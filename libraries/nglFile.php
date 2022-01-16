@@ -30,6 +30,7 @@ class nglFile extends nglBranch implements inglBranch {
 		$vArguments["hugefile"]				= ['self::call()->istrue($mValue)', false];
 		$vArguments["length"]				= ['(int)$mValue', 0];
 		$vArguments["mimetype"]				= ['(string)$mValue', null];
+		$vArguments["extend_info"]			= ['self::call()->istrue($mValue)', false];
 		$vArguments["outtype"]				= ['(string)$mValue', null];
 		$vArguments["reload"]				= ['self::call()->istrue($mValue)', true];
 		return $vArguments;
@@ -172,12 +173,14 @@ class nglFile extends nglBranch implements inglBranch {
 			
 			$vFile["protocol"]	= $sProtocol ;
 			$vFile["path"] 		= $sFilePath;
-			$vFile["bytes"]		= null;
-			$vFile["size"]		= null;
-			$vFile["chmod"]		= null;
-			$vFile["timestamp"]	= null;
-			$vFile["date"] 		= null;
-			$vFile["query"] 	= (isset($aFilePath[1])) ? $aFilePath[1] : "";
+			if($this->extend_info) {
+				$vFile["bytes"]		= null;
+				$vFile["size"]		= null;
+				$vFile["chmod"]		= null;
+				$vFile["timestamp"]	= null;
+				$vFile["date"] 		= null;
+				$vFile["query"] 	= (isset($aFilePath[1])) ? $aFilePath[1] : "";
+			}
 		} else {
 			$sFilePath = self::call("files")->absPath($sFilePath);
 			$sFilePath = self::call()->sandboxPath($sFilePath);
@@ -198,12 +201,14 @@ class nglFile extends nglBranch implements inglBranch {
 				
 				$vFile["protocol"]	= $sProtocol ;
 				$vFile["path"] 		= $sFilePath;
-				$vFile["bytes"]		= \filesize($sFilePath);
-				$vFile["size"]		= $bIsDir ? 0 : self::call()->strSizeEncode($vFile["bytes"]);
-				$vFile["chmod"]		= \substr(\sprintf("%o", \fileperms($sFilePath)), -4);
-				$vFile["timestamp"]	= \filemtime($sFilePath);
-				$vFile["date"] 		= \date("Y-m-d H:i:s", $vFile["timestamp"]);
-				$vFile["query"] 	= null;
+				if($this->extend_info) {
+					$vFile["bytes"]		= \filesize($sFilePath);
+					$vFile["size"]		= $bIsDir ? 0 : self::call()->strSizeEncode($vFile["bytes"]);
+					$vFile["chmod"]		= \substr(\sprintf("%o", \fileperms($sFilePath)), -4);
+					$vFile["timestamp"]	= \filemtime($sFilePath);
+					$vFile["date"] 		= \date("Y-m-d H:i:s", $vFile["timestamp"]);
+					$vFile["query"] 	= null;
+				}
 			} else {
 				$vFile["basename"]	= \basename($sFilePath);
 				$aBasename = \explode(".", $vFile["basename"]);
@@ -219,18 +224,22 @@ class nglFile extends nglBranch implements inglBranch {
 				
 				$vFile["protocol"]	= $sProtocol ;
 				$vFile["path"] 		= $sFilePath;
-				$vFile["bytes"]		= null;
-				$vFile["size"]		= null;
-				$vFile["chmod"]		= null;
-				$vFile["timestamp"]	= null;
-				$vFile["date"] 		= null;
-				$vFile["query"] 	= null;
+				if($this->extend_info) {
+					$vFile["bytes"]		= null;
+					$vFile["size"]		= null;
+					$vFile["chmod"]		= null;
+					$vFile["timestamp"]	= null;
+					$vFile["date"] 		= null;
+					$vFile["query"] 	= null;
+				}
 			}
 		}
 
-		$vFile["mime"] = ($vFile["type"]=="file") ? self::call()->mimeType($vFile["extension"]) : "application/x-unknown-content-type";
-		$sFilePath = ($vFile["protocol"]=="url") ? "http:".$sFilePath : $sFilePath;
-		$vFile["image"] = (\file_exists($sFilePath) && \function_exists("exif_imagetype")) ? (@\exif_imagetype($sFilePath)>0) : false;
+		if($this->extend_info) {
+			$vFile["mime"] = ($vFile["type"]=="file") ? self::call()->mimeType($vFile["extension"]) : "application/x-unknown-content-type";
+			$sFilePath = ($vFile["protocol"]=="url") ? "http:".$sFilePath : $sFilePath;
+			$vFile["image"] = (\file_exists($sFilePath) && \function_exists("exif_imagetype")) ? (@\exif_imagetype($sFilePath)>0) : false;
+		}
 
 		// set de atributos
 		$this->attribute("info", $vFile);
@@ -272,8 +281,7 @@ class nglFile extends nglBranch implements inglBranch {
 			$nBuffer = 0;
 			$sBuffer = "";
 			if((!$bURL || !(bool)\ini_get("allow_url_fopen")) && $handler = @\fopen($sFilePath, "rb")) {
-				$bHuge = $this->argument("hugefile");
-				if(!$bHuge) {
+				if(!$this->hugefile) {
 					while(!\feof($handler)) {
 						$nBuffer += 4096;
 						$sBuffer .= \fread($handler, 4096);
@@ -426,7 +434,7 @@ class nglFile extends nglBranch implements inglBranch {
 					$x++;
 				}
 
-				if(!$this->argument("hugefile")) {
+				if(!$this->hugefile) {
 					\fclose($handler);
 					if($bReload) { $this->reload($sFilePath); }
 				}
@@ -449,7 +457,7 @@ class nglFile extends nglBranch implements inglBranch {
 					if(!\file_exists($sFilePath)) { @\chmod($sFilePath, NGL_CHMOD_FILE); }
 					\fwrite($handler, $sContent);
 					
-					if(!$this->argument("hugefile")) {
+					if(!$this->hugefile) {
 						\fclose($handler);
 						if($bReload) { $this->reload($sFilePath); }
 					} else {

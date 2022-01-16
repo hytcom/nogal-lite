@@ -81,6 +81,9 @@ class nglSystemVars extends nglTrunk {
 		$this->VARS = $VARS;
 	}
 
+	public function get($sVarname) { return $this->__get($sVarname); }
+	public function getall() { return $this->__get("ALL"); }
+
 	/** FUNCTION {
 		"name" : "__get", 
 		"type" : "public",
@@ -254,8 +257,8 @@ class nglSystemVars extends nglTrunk {
 		$vVersion["author"]			= "hytcom";
 		$vVersion["site"]			= "https://hytcom.net";
 		$vVersion["documentation"]	= "https://github.com/hytcom/wiki/tree/master/nogal";
-		$vVersion["github"]			= "https://github.com/hytcom/nogal-php";
-		$vVersion["docker"]			= "docker pull hytcom/nogal";
+		$vVersion["github"]			= "https://github.com/hytcom/nogal";
+		$vVersion["docker"]			= "docker pull hytcom/nogal:latest";
 
 		return $vVersion;
 	}

@@ -106,7 +106,7 @@ class nglTrunk extends nglRoot {
 			$aSections = $this->ConfigFileSections(\file(NGL_PATH_CONF.NGL_DIR_SLASH.$this->object.".conf"));
 			$aConfig = self::parseConfigFile(NGL_PATH_CONF.NGL_DIR_SLASH.$this->object.".conf", true);
 
-			$aKey = \explode(".", $sKey, 2);
+			$aKey = !\strpos($sKey, ".") ? ["arguments", $sKey] : \explode(".", $sKey, 2);
 			if(\array_key_exists($aKey[0], $aConfig)) {
 				$bUpdated = true;
 				if(\array_key_exists($aKey[1], $aConfig[$aKey[0]])) {
@@ -133,6 +133,7 @@ class nglTrunk extends nglRoot {
 					return $sContent;
 				}
 			}
+
 			return "Invalid key '".$sKey."'\n";
 		} else {
 			return "The config file doesn't exists\n";

@@ -56,7 +56,7 @@ class nglDBase extends nglBranch implements iNglDataBase {
 		$this->nResult = 0;
 		$this->aFields = [];
 		$this->aFieldsUnset = [];
-		if($this->argument("autoconn")) {
+		if($this->autoconn) {
 			$this->connect();
 		}
 	}
@@ -221,9 +221,6 @@ class nglDBase extends nglBranch implements iNglDataBase {
 	public function exec() {
 	}
 
-	public function jsqlParser() {
-	}
-
 	public function mexec() {
 	}
 
@@ -265,7 +262,7 @@ class nglDBase extends nglBranch implements iNglDataBase {
 		if($aQuery["FIELDS"][0]!="*") {
 			$aFields = self::call()->arrayColumn($aQuery["FIELDS"], 1);
 		}
-		if(!$this->argument("deleted")) {
+		if(!$this->deleted) {
 			if($nDeleted = \array_search("deleted", $aColumns)) { unset($aColumns[$nDeleted]); }
 		}
 		$this->aFields = $aFields;

@@ -123,11 +123,12 @@ class nglRoot {
 						nombre_del_objeto.nombre_de_instancia
 				",
 				"$mArguments" : "argumentos adicionales pasados al método __init__"
+				"$bRequireOnly" : "cuando es true, solo incluye la clase"
 			},
 			"return" : "objeto o false"
 		}
 	**/
-	public static function call($sObjectName=null, $aArguments=[]) {
+	final public static function call($sObjectName=null, $aArguments=[], $bRequireOnly=false) {
 		if($sObjectName===null) { return self::$fn; }
 		if(!\is_array($aArguments) || !\count($aArguments)) { $aArguments = null; }
 
@@ -163,12 +164,14 @@ class nglRoot {
 
 		if(!isset(self::$aObjects[$sObjectName])) {
 			if(isset(self::$vLibraries[$sObjectType])) {
-				$mClassName = self::$vLibraries[$sObjectType][0];
-				if(!isset($sConfFile)) { $sConfFile = $sObjectType; }
-				self::loadObject($mClassName, $bFeeder, $sConfFile, $sObjectName, $aArguments);
+				$sClassName = self::$vLibraries[$sObjectType][0];
+				self::loadClass($sClassName, $bFeeder);
+				if(!$bRequireOnly) {
+					if(!isset($sConfFile)) { $sConfFile = $sObjectType; }
+					self::loadObject($sClassName, $bFeeder, $sConfFile, $sObjectName, $aArguments);
+				}
 			} else {
-				self::errorMessage("nogal", "1002", $sObjectType, "die");				
-				return false;
+				self::errorMessage("nogal", "1002", $sObjectType, "die");
 			}
 		}
 
@@ -178,8 +181,8 @@ class nglRoot {
 		}
 		return false;
 	}
-
-	public static function requirer() {
+	
+	final public static function requirer() {
 		$aBacktrace = \debug_backtrace(false);
 		foreach($aBacktrace as $aFile) {
 			if(
@@ -195,12 +198,12 @@ class nglRoot {
 		return false;
 	}
 
-	public static function EvalCode($sCode) {
+	final public static function EvalCode($sCode) {
 		self::$sLastEval = \base64_encode($sCode);
 		return $sCode;
 	}
 
-	public static function returnFeeder($object) {
+	final public static function returnFeeder($object) {
 		$sClass = \get_class($object);
 		if(\method_exists($object, "__init__") && !isset(self::$vFeederInits[$sClass])) {
 			$object->__init__();
@@ -209,17 +212,17 @@ class nglRoot {
 		return $object;
 	}
 
-	public static function tutor($sTutorName, $sClassName=null, $aMethods=null) {
+	final public static function tutor($sTutorName, $sClassName=null, $aMethods=null) {
 		if($sClassName!==null) { self::$aTutors[$sTutorName] = [$sClassName,$aMethods]; }
 		return (isset(self::$aTutors[$sTutorName])) ? self::$aTutors[$sTutorName] : null;
 	}
 
-	public static function nut($sNutName, $sClassName=null, $aMethods=null) {
+	final public static function nut($sNutName, $sClassName=null, $aMethods=null) {
 		if($sClassName!==null) { self::$aNuts[$sNutName] = [$sClassName,$aMethods]; }
 		return (isset(self::$aNuts[$sNutName])) ? self::$aNuts[$sNutName] : null;
 	}
 
-    public static function absolutePath($sPath, $sDirSlash=DIRECTORY_SEPARATOR) {
+    final public static function absolutePath($sPath, $sDirSlash=DIRECTORY_SEPARATOR) {
         $sPath = \str_replace(['/', '\\'], $sDirSlash, $sPath);
         $aPath = \explode($sDirSlash, $sPath);
 		$aPath = \array_filter($aPath, "strlen");
@@ -238,7 +241,7 @@ class nglRoot {
 
 	// verifica si $mPath o alguno de sus indices (si es array) es parte de NGL_PATH_CURRENT
 	// $sPath debe terminar en /
-	public static function inCurrentPath($mPath) {
+	final public static function inCurrentPath($mPath) {
 		if(!\is_array($mPath)) { $mPath = [$mPath]; }
 		\usort($mPath, function($a, $b) { return \strlen($b) - \strlen($a); });
 		$nLength = \strlen(NGL_PATH_CURRENT);
@@ -259,7 +262,7 @@ class nglRoot {
 		return false;
 	}
 		
-	public static function constants() {
+	final public static function constants() {
 		$aConstants = [];
 		$aGetConstants = \get_defined_constants(true);
 		foreach($aGetConstants["user"] as $sName => $sConstant) {
@@ -272,7 +275,7 @@ class nglRoot {
 		return $aConstants;
 	}
 
-	public static function currentPath($sDirSlash=DIRECTORY_SEPARATOR) {
+	final public static function currentPath($sDirSlash=DIRECTORY_SEPARATOR) {
 		if(\is_array(self::$vCurrentPath) && \count(self::$vCurrentPath)) { return self::$vCurrentPath; }
 		
 		// document_root
@@ -335,12 +338,12 @@ class nglRoot {
 		return $vCurrent;
 	}
 
-	public static function defineConstant($sConstantName, $sConstantValue=null) {
+	final public static function defineConstant($sConstantName, $sConstantValue=null) {
 		if(!\defined($sConstantName)) { \define($sConstantName, $sConstantValue); }
 		return \constant($sConstantName);
 	}
 
-	public static function prickout($sURL=null, $sGround=null) {
+	final public static function prickout($sURL=null, $sGround=null) {
 		if($sURL===null) { $sURL = NGL_URL; }
 		$sURL = \parse_url($sURL, PHP_URL_PATH);
 		$sFile = \str_replace(\parse_url(NGL_URL, PHP_URL_PATH), "", $sURL);
@@ -388,7 +391,7 @@ class nglRoot {
 		return [false, $sFilePath];
 	}
 
-	public static function errorsHandler($nError, $sMessage, $sFile, $nLine) {
+	final public static function errorsHandler($nError, $sMessage, $sFile, $nLine) {
 		if(\defined("E_ERROR")) { 				$aErrors[E_ERROR]		 		= "Error"; }
 		if(\defined("E_WARNING")) { 				$aErrors[E_WARNING]			= "Warning"; }
 		if(\defined("E_PARSE")) { 				$aErrors[E_PARSE]				= "Parsing Error"; }
@@ -471,27 +474,27 @@ class nglRoot {
 		}
 	}
 
-	public static function errorGetLast() {
+	final public static function errorGetLast() {
 		return self::$vLastError;
 	}
 
-	public static function errorClearLast() {
+	final public static function errorClearLast() {
 		self::$vLastError = [];
 	}
 
-	public static function errorReporting($bReport) {
+	final public static function errorReporting($bReport) {
 		self::$bErrorReportPrevius = self::$bErrorReport;
 		if($bReport!==null) { self::$bErrorReport = $bReport; }
 		return self::$bErrorReport;
 	}
 
-	public static function errorReportingRestore() {
+	final public static function errorReportingRestore() {
 		self::$bErrorReport = self::$bErrorReportPrevius;
 		return self::$bErrorReport;
 	}
 
 	// retorna el modo previo
-	public static function errorMode($sObject, $sMode=null) {
+	final public static function errorMode($sObject, $sMode=null) {
 		$sCurrent = (isset(self::$aErrorModes[$sObject])) ? self::$aErrorModes[$sObject] : NGL_HANDLING_ERRORS_MODE;
 		if($sMode!==null) {
 			$sMode = \strtolower($sMode);
@@ -501,11 +504,11 @@ class nglRoot {
 		return $sCurrent;
 	}
 
-	public static function errorForceReturn($bForce) {
+	final public static function errorForceReturn($bForce) {
 		self::$bErrorForceReturn = ($bForce===true) ? true : false;
 	}
 
-	public static function errorPages($nCode) {
+	final public static function errorPages($nCode) {
 		$sError = "Undefined Error Code";
 		switch($nCode) {
 			case 403:
@@ -544,12 +547,12 @@ class nglRoot {
 		die($sMessage);
 	}
 
-	public static function exists($sObjectType) {
+	final public static function exists($sObjectType) {
 		$sObjectType = \strtok($sObjectType, ".");
 		return isset(self::$vLibraries[$sObjectType]);
 	}
 
-	public static function kill($sObjectName) {
+	final public static function kill($sObjectName) {
 		if(isset(self::$aObjects[$sObjectName])) {
 			$sClassName = self::$aObjects[$sObjectName]->class;
 			if(isset(self::$aObjectsByClass[$sClassName])) {
@@ -570,11 +573,11 @@ class nglRoot {
 		return false;
 	}
 
-	public static function errorSetCodes($sObject, $aCodes) {
+	final public static function errorSetCodes($sObject, $aCodes) {
 		self::$vErrorCodes[$sObject] = $aCodes;
 	}
 
-	public static function errorCodes($sObject, $nCode) {
+	final public static function errorCodes($sObject, $nCode) {
 		if(!isset(self::$vErrorCodes[$sObject])) {
 			$sErrorFile = null;
 			if(\file_exists(NGL_PATH_CONF.NGL_DIR_SLASH.$sObject.".conf")) {
@@ -592,7 +595,7 @@ class nglRoot {
 		return (isset(self::$vErrorCodes[$sObject], self::$vErrorCodes[$sObject][$nCode])) ? self::$vErrorCodes[$sObject][$nCode] : $nCode;
 	}
 
-	public static function errorMessage($sObject=null, $sCode=null, $sAditionalText=null, $sMode=null) {
+	final public static function errorMessage($sObject=null, $sCode=null, $sAditionalText=null, $sMode=null) {
 		$sMsgText = "NOGAL ERROR ";
 		$sDescription = $sDescriptionPure = "";
 
@@ -728,7 +731,7 @@ class nglRoot {
 		}
 	}
 	
-	public static function lastOf($sObject=null) {
+	final public static function lastOf($sObject=null) {
 		if($sObject===null) {
 			return $vLastOf;
 		} else if(isset(self::$vLastOf[$sObject])) {
@@ -737,18 +740,7 @@ class nglRoot {
 		return null;
 	}
 
-	/** FUNCTION {
-		load : {
-			"description" : "agrega un nuevo objeto al objeto principal y lo retorna",
-			"params" : {
-				"$sClassName" : "nombre de la clase del nuevo objeto",
-				"$sObjectName" : "nombre del nuevo objeto",
-				"$aArguments" : "argumentos para el nuevo objeto"
-			},
-			"return" : "instancia $sObjectName de la clase $sClassName"
-		}
-	**/
-	public static function loadObject($sClassName, $bFeeder=true, $sConfFile=null, $sObjectName=null, $aArguments=null) {
+	final public static function loadClass($sClassName, $bFeeder) {
 		if($bFeeder) {
 			$sClassFile = $sClassName.".feeder.php";
 		} else {
@@ -766,7 +758,20 @@ class nglRoot {
 				self::errorMessage("nogal", "1001", self::$vPaths["libraries"].$sClassFile." (".$sClassName.")", "die");
 			}
 		}
+	}
 
+	/** FUNCTION {
+		load : {
+			"description" : "agrega un nuevo objeto al objeto principal y lo retorna",
+			"params" : {
+				"$sClassName" : "nombre de la clase del nuevo objeto",
+				"$sObjectName" : "nombre del nuevo objeto",
+				"$aArguments" : "argumentos para el nuevo objeto"
+			},
+			"return" : "instancia $sObjectName de la clase $sClassName"
+		}
+	**/
+	final public static function loadObject($sClassName, $bFeeder=true, $sConfFile=null, $sObjectName=null, $aArguments=null) {
 		if($sObjectName!==null) {
 			$sObjectName = self::objectName($sObjectName);
 			if(!\in_array($sObjectName, self::$aObjectsByClass[$sClassName])) {
@@ -779,9 +784,7 @@ class nglRoot {
 				if(\method_exists(self::call($sObjectName), "__declareAttributes__")) { self::call($sObjectName)->__SetupAttributes__(self::call($sObjectName)->__declareAttributes__()); }
 				if(\method_exists(self::call($sObjectName), "__declareArguments__")) { self::call($sObjectName)->__SetupArguments__(self::call($sObjectName)->__declareArguments__()); }
 				if(\method_exists(self::call($sObjectName), "__declareVariables__")) { self::call($sObjectName)->__declareVariables__(); }
-				if(!$bFeeder && \file_exists($sConfigFile = NGL_PATH_CONF.NGL_DIR_SLASH.$sConfFile.".conf")) {
-					self::call($sObjectName)->__config__($sConfigFile);
-				}
+				if(!$bFeeder && \file_exists($sConfigFile = NGL_PATH_CONF.NGL_DIR_SLASH.$sConfFile.".conf")) { self::call($sObjectName)->__config__($sConfigFile); }
 				if(\method_exists(self::call($sObjectName), "__arguments__") && $aArguments!==null) { self::call($sObjectName)->args($aArguments); }
 				if(\method_exists(self::call($sObjectName), "__init__")) {
 					if($bFeeder) {
@@ -802,7 +805,7 @@ class nglRoot {
 		return false;
 	}
 
-	public static function loadedClass($sClassName=null) {
+	final public static function loadedClass($sClassName=null) {
 		if($sClassName) {
 			return (
 				isset(self::$aObjectsByClass[$sClassName]) || (
@@ -815,7 +818,7 @@ class nglRoot {
 		}
 	}
 
-	public static function availables() {
+	final public static function availables() {
 		$aComponents = \array_merge(self::$vCoreLibs, self::$vLibraries);
 		\ksort($aComponents);
 		$aAvailables = [];
@@ -825,7 +828,7 @@ class nglRoot {
 		return $aAvailables;
 	}
 
-	public static function is($obj, $sType=null) {
+	final public static function is($obj, $sType=null) {
 		if(\method_exists($obj, "__me__")) {
 			$aAvailables = \array_merge(self::$vCoreLibs, self::$vLibraries);
 			$object = $obj->__me__();
@@ -839,7 +842,7 @@ class nglRoot {
 		return false;
 	}
 
-	public static function isFeeder($obj) {
+	final public static function isFeeder($obj) {
 		if(\method_exists($obj, "__me__")) {
 			$aAvailables = \array_merge(self::$vCoreLibs, self::$vLibraries);
 			$object = $obj->__me__();
@@ -859,7 +862,7 @@ class nglRoot {
 		return $aAvailables;
 	}
 
-	public static function log($sFileName, $sContent) {
+	final public static function log($sFileName, $sContent) {
 		if(\is_dir(NGL_PATH_LOGS) && \is_writable(NGL_PATH_LOGS)) {
 			$sFileName = self::call()->sandboxPath(NGL_PATH_LOGS.NGL_DIR_SLASH.$sFileName);
 			$sFileName = self::call()->clearPath($sFileName);
@@ -868,7 +871,7 @@ class nglRoot {
 		}
 	}
 
-	public static function chkreferer($bReturnMode=false) {
+	final public static function chkreferer($bReturnMode=false) {
 		if(!isset($_SERVER["HTTP_REFERER"])) {
 			if($bReturnMode) { return false; }
 			self::call()->errorPages(403);
@@ -882,7 +885,7 @@ class nglRoot {
 		if($bReturnMode) { return true; }
 	}
 
-	public static function passwd($sPassword, $bDecrypt=false) {
+	final public static function passwd($sPassword, $bDecrypt=false) {
 		if(NGL_PASSWORD_KEY!==null && self::call()->exists("crypt")) {
 			if($bDecrypt) {
 				$sPassword = \base64_decode($sPassword);
@@ -896,7 +899,7 @@ class nglRoot {
 		return $sPassword;
 	}
 
-	public static function out($sMessage, $sStyle=null, $bNewLine=true) {
+	final public static function out($sMessage, $sStyle=null, $bNewLine=true) {
 		$aStyles = [
 			"success" => "\033[0;92m%s\033[0m",
 			"error" => "\033[1;37;41m%s\033[0m",
@@ -913,11 +916,11 @@ class nglRoot {
 		\printf($sFormat, $sMessage);
 	}
 
-	public static function objects() {
+	final public static function objects() {
 		return self::$aObjects;
 	}
 
-	public static function objectName($sObjectName) {
+	final public static function objectName($sObjectName) {
 		$sObjectName = \preg_replace("/[^a-zA-Z0-9_\.]/is", "", $sObjectName);
 		return \strtolower($sObjectName);
 	}
@@ -932,7 +935,7 @@ class nglRoot {
 		},
 		"return" : "array o null"
 	} **/
-	public static function parseConfigFile($sFilePath, $bUseSections=false) {
+	final public static function parseConfigFile($sFilePath, $bUseSections=false) {
 		$sFilePath = \preg_replace("/[\\\\\/]{1,}/", NGL_DIR_SLASH, $sFilePath);
 		$sFilePath = \rtrim($sFilePath, NGL_DIR_SLASH);
 		if(\file_exists($sFilePath)) {
@@ -952,7 +955,7 @@ class nglRoot {
 		},
 		"return" : "array"
 	} **/
-	public static function parseConfigString($sString, $bUseSections=false, $bPreserveNL=false) {
+	final public static function parseConfigString($sString, $bUseSections=false, $bPreserveNL=false) {
 		if($bPreserveNL) {
 			$NL = self::call()->unique(6);
 			$sString = \preg_replace("/(\\\(\\r\\n|\\n))/", $NL, $sString);
@@ -1035,22 +1038,22 @@ class nglRoot {
 		return $aData;
 	}
 
-	public static function path($sPath) {
+	final public static function path($sPath) {
 		$sPath = \strtolower($sPath);
 		if(isset(self::$vPaths[$sPath])) { return self::$vPaths[$sPath]; }
 		return null;
 	}
 	
-	public static function setPath($sPath) {
+	final public static function setPath($sPath) {
 		$sBaseDir = \preg_replace("/[\\\\\/]{1,}/", NGL_DIR_SLASH, NGL_PATH_FRAMEWORK);
 		self::$vPaths[$sPath] = \realpath($sBaseDir.NGL_DIR_SLASH.$sPath).NGL_DIR_SLASH;
 	}
 
-	public static function starTime() {
+	final public static function starTime() {
 		return self::$nStarTime;
 	}
 
-	public static function tempDir() {
+	final public static function tempDir() {
 		if(!function_exists("sys_get_temp_dir") ) {
 			if(!empty($_ENV["TMP"])) { return \realpath($_ENV["TMP"]); }
 			if(!empty($_ENV["TMPDIR"])) { return \realpath($_ENV["TMPDIR"]); }
@@ -1069,7 +1072,7 @@ class nglRoot {
 		return \sys_get_temp_dir();
 	}
 
-	public static function whois($sElement=null) {
+	final public static function whois($sElement=null) {
 		if($sElement===null) {
 			$aLibraries = self::$vLibraries;
 			$aMethods = \get_class_methods(__CLASS__);

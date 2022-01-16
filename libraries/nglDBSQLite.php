@@ -78,6 +78,7 @@ class nglDBSQLite extends nglBranch implements iNglDataBase {
 		$vArguments["do"]					= ['self::call()->istrue($mValue)', false];
 		$vArguments["error_description"]	= ['self::call()->istrue($mValue)', false];
 		$vArguments["error_query"]			= ['self::call()->istrue($mValue)', false];
+		$vArguments["field"]				= ['$mValue', null];
 		$vArguments["flags"]				= ['(int)$mValue', (SQLITE3_OPEN_READWRITE | SQLITE3_OPEN_CREATE)];
 		$vArguments["insert_mode"]			= ['$mValue', "INSERT"];
 		$vArguments["jsql"]					= ['$mValue', null];
@@ -107,7 +108,7 @@ class nglDBSQLite extends nglBranch implements iNglDataBase {
 	}
 
 	final public function __init__() {
-		if($this->argument("autoconn")) {
+		if($this->autoconn) {
 			$this->connect();
 		}
 	}
@@ -160,10 +161,10 @@ class nglDBSQLite extends nglBranch implements iNglDataBase {
 	} **/
 	private function Error() {
 		$sMsgError = "";
-		if($this->argument("error_description")) {
+		if($this->error_description) {
 			$sMsgError = $this->link->lastErrorMsg();
-			if($this->argument("error_query")) {
-				$sMsgError .= " -> ". $this->argument("sql");
+			if($this->error_query) {
+				$sMsgError .= " -> ". $this->sql;
 			}
 		}
 
@@ -223,7 +224,7 @@ class nglDBSQLite extends nglBranch implements iNglDataBase {
 	} **/
 	public function exec() {
 		list($sQuery) = $this->getarguments("sql", \func_get_args());
-		if($this->argument("debug")) { return $sQuery; }
+		if($this->debug) { return $sQuery; }
 		if(!$query = @$this->link->query($sQuery)) {
 			return $this->Error();
 		}
@@ -380,7 +381,7 @@ class nglDBSQLite extends nglBranch implements iNglDataBase {
 	public function mexec() {
 		list($sQuery) = $this->getarguments("sql", \func_get_args());
 		$aQueries = self::call()->strtoArray($sQuery, ";");
-		if($this->argument("debug")) { return $aQueries; }
+		if($this->debug) { return $aQueries; }
 		
 		$aResults = [];
 		foreach($aQueries as $sQuery) {
@@ -412,7 +413,7 @@ class nglDBSQLite extends nglBranch implements iNglDataBase {
 		list($sQuery,$bDO) = $this->getarguments("sql,do", \func_get_args());
 		$sQuery = \preg_replace("/^--(.*?)$/m", "", $sQuery);
 		$aQueries = self::call()->strtoArray($sQuery, ";");
-		if($this->argument("debug")) { return $aQueries; }
+		if($this->debug) { return $aQueries; }
 
 		$aResults = [];
 		foreach($aQueries as $sQuery) {
@@ -567,7 +568,7 @@ class nglDBSQLite extends nglBranch implements iNglDataBase {
 	public function query() {
 		list($sQuery,$bDO) = $this->getarguments("sql,do", \func_get_args());
 
-		if($this->argument("debug")) { return $sQuery; }
+		if($this->debug) { return $sQuery; }
 
 		$nTimeIni = \microtime(true);
 		if(!$query = @$this->link->query($sQuery)) {
@@ -582,6 +583,12 @@ class nglDBSQLite extends nglBranch implements iNglDataBase {
 		$nQueryTime = self::call("dates")->microtimer($nTimeIni);
 		$sQueryName = "sqliteq".\strstr($this->me, ".")."_".self::call()->unique();
 		return self::call($sQueryName)->load($this->link, $query, $sQuery, $nQueryTime);
+	}
+
+	public function quote() {
+		list($sField) = $this->getarguments("field", \func_get_args());
+		$sField = \str_replace('"','',$sField);
+		return '"'.\str_replace(".",'"."',$sField).'"';
 	}
 
 	/** FUNCTION {

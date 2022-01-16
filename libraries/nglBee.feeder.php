@@ -127,7 +127,7 @@ HELP;
 	}
 
 	public function login($sPassword) {
-		if($sPassword===NGL_BEE) {
+		if($sPassword===NGL_BEE || (NGL_BEE===true && $sPassword==="QUEENBEE")) {
 			$_SESSION[NGL_SESSION_INDEX]["FLYINGBEE"] = true;
 			return $this;
 		}
@@ -279,13 +279,22 @@ HELP;
 			}
 		} else if($sCmd==='-$:') {
 			$obj = $this->output;
-		} else if(isset($this->aLibs[$sCmd])) {
+		} else if(\preg_match_all("/\{(?<!\\\\)(\\$|@)([a-z][0-9a-z_]*)\}/is", $sCmd, $aMatchs, PREG_SET_ORDER)) {
+			$sCmd = $this->GetVarConst($sCmd, $aMatchs);
+		}
+		
+		if(isset($this->aLibs[$sCmd])) {
 			if(!isset($this->aObjs[$sCmd])) {
 				if(!($this->aObjs[$sCmd] = self::call($sCmd))) { die(self::errorMessage(null)); }
 				$this->aObjs[$sCmd]->errorMode("return");
 			}
 			$obj = $this->aObjs[$sCmd];
 		}
+
+		if(!isset($obj)) {
+			self::errorMessage("bee", null, "Object '".$sCmd."' does not exist'", (NGL_TERMINAL ? "shell" : "die"));
+		}
+
 		$aLastError = self::errorGetLast();
 		if(\is_array($aLastError) && \count($aLastError)) { die(self::errorMessage(null)); }
 
@@ -303,14 +312,12 @@ HELP;
 					$mOutput = \call_user_func([$obj,$aCommand[1]]);
 				}
 			} else {
-				if(NGL_TERMINAL) {
-					self::errorMessage("bee", null, "The required method '".$aCommand[1]."' does not exist for '".$sCmd."'", "shell");
-				} else {
-					self::errorMessage("bee", null, "The required method '".$aCommand[1]."' does not exist for '".$sCmd."'", "die");
-				}
+				self::errorMessage("bee", null, "The required method '".$aCommand[1]."' does not exist for '".$sCmd."'", (NGL_TERMINAL ? "shell" : "die"));
 			}
 
 			$this->output = $mOutput;
+		} else {
+			$this->output = $obj;
 		}
 
 		return true;
@@ -493,8 +500,11 @@ HELP;
 							return [null];
 						} else if(\is_array($mValue)) {
 							$aArgs[$mKey] = $this->Argument($mValue, $bToRun, false);
-						} else if(!\is_array($mValue) && preg_match_all("/\{(?<!\\\\)(\\$|@)([a-z][0-9a-z_]*)\}/is", $mValue, $aMatchs, PREG_SET_ORDER)) {
-							if($mValue==$aMatchs[0][0] && array_key_exists($aMatchs[0][2], $this->aVars)) {
+						} else if(!\is_array($mValue) && \preg_match_all("/\{(?<!\\\\)(\\$|@)([a-z][0-9a-z_]*)\}/is", $mValue, $aMatchs, PREG_SET_ORDER)) {
+							$aArgs[$mKey] =  $this->GetVarConst($mValue, $aMatchs);
+
+							/*
+							if($mValue==$aMatchs[0][0] && \array_key_exists($aMatchs[0][2], $this->aVars)) {
 								$aArgs[$mKey] = $this->aVars[$aMatchs[0][2]];
 							} else if($mValue==$aMatchs[0][0] && \defined($aMatchs[0][2])) {
 								$aArgs[$mKey] = \constant($aMatchs[0][2]);
@@ -509,6 +519,7 @@ HELP;
 								$mValue = \str_replace('-$:', $this->output, $mValue);
 								$aArgs[$mKey] =  $mValue;
 							}
+							*/
 						} else {
 							$sReplace = "";
 							if(\strpos($mValue, '-$:')!==false) {
@@ -535,26 +546,29 @@ HELP;
 			}
 
 			if(\preg_match_all("/\{(?<!\\\\)(\\$|@)([a-z][0-9a-z_]*)\}/is", $sArgument, $aMatchs, PREG_SET_ORDER)) {
-				// variables
-				if($sArgument==$aMatchs[0][0] && \array_key_exists($aMatchs[0][2], $this->aVars)) {
-					return ($bToRun) ? [$this->aVars[$aMatchs[0][2]]] : $this->aVars[$aMatchs[0][2]];
-				}
-
-				// constantes
-				if($sArgument==$aMatchs[0][0] && \defined($aMatchs[0][2])) {
-					return ($bToRun) ? [\constant($aMatchs[0][2])] : \constant($aMatchs[0][2]);
-				}
-
-				foreach($aMatchs as $aMatch) {
-					if(\array_key_exists($aMatch[2], $this->aVars)) {
-						$sArgument = \str_replace($aMatch[0], $this->aVars[$aMatch[2]], $sArgument);
-					} else if(\defined($aMatch[2])) {
-						$sArgument = \str_replace($aMatch[0], \constant($aMatchs[0][2]), $sArgument);
-					}
-				}
-				$sArgument = \str_replace('-$:', $this->output, $sArgument);
-				return ($bToRun) ? [$sArgument] : $sArgument;
+				return $this->GetVarConst($sArgument, $aMatchs, $bToRun);
 			}
+			// if(\preg_match_all("/\{(?<!\\\\)(\\$|@)([a-z][0-9a-z_]*)\}/is", $sArgument, $aMatchs, PREG_SET_ORDER)) {
+			// 	// variables
+			// 	if($sArgument==$aMatchs[0][0] && \array_key_exists($aMatchs[0][2], $this->aVars)) {
+			// 		return ($bToRun) ? [$this->aVars[$aMatchs[0][2]]] : $this->aVars[$aMatchs[0][2]];
+			// 	}
+
+			// 	// constantes
+			// 	if($sArgument==$aMatchs[0][0] && \defined($aMatchs[0][2])) {
+			// 		return ($bToRun) ? [\constant($aMatchs[0][2])] : \constant($aMatchs[0][2]);
+			// 	}
+
+			// 	foreach($aMatchs as $aMatch) {
+			// 		if(\array_key_exists($aMatch[2], $this->aVars)) {
+			// 			$sArgument = \str_replace($aMatch[0], $this->aVars[$aMatch[2]], $sArgument);
+			// 		} else if(\defined($aMatch[2])) {
+			// 			$sArgument = \str_replace($aMatch[0], \constant($aMatchs[0][2]), $sArgument);
+			// 		}
+			// 	}
+			// 	$sArgument = \str_replace('-$:', $this->output, $sArgument);
+			// 	return ($bToRun) ? [$sArgument] : $sArgument;
+			// }
 		}
 
 		if(strpos($sArgument, '-$:')!==false) {
@@ -563,6 +577,30 @@ HELP;
 		}
 
 		return ($bToRun) ? [$sArgument] : $sArgument;
+	}
+
+	private function GetVarConst($sArgument, $aMatchs, $bToRun=false) {
+		if(\preg_match_all("/\{(?<!\\\\)(\\$|@)([a-z][0-9a-z_]*)\}/is", $sArgument, $aMatchs, PREG_SET_ORDER)) {
+			// variables
+			if($sArgument==$aMatchs[0][0] && \array_key_exists($aMatchs[0][2], $this->aVars)) {
+				return ($bToRun) ? [$this->aVars[$aMatchs[0][2]]] : $this->aVars[$aMatchs[0][2]];
+			}
+
+			// constantes
+			if($sArgument==$aMatchs[0][0] && \defined($aMatchs[0][2])) {
+				return ($bToRun) ? [\constant($aMatchs[0][2])] : \constant($aMatchs[0][2]);
+			}
+
+			foreach($aMatchs as $aMatch) {
+				if(\array_key_exists($aMatch[2], $this->aVars)) {
+					$sArgument = \str_replace($aMatch[0], $this->aVars[$aMatch[2]], $sArgument);
+				} else if(\defined($aMatch[2])) {
+					$sArgument = \str_replace($aMatch[0], \constant($aMatchs[0][2]), $sArgument);
+				}
+			}
+			$sArgument = \str_replace('-$:', $this->output, $sArgument);
+			return ($bToRun) ? [$sArgument] : $sArgument;
+		}
 	}
 }
 

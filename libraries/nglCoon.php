@@ -16,6 +16,8 @@ namespace nogal;
 
 class nglCoon extends nglBranch implements inglBranch {
 
+	private $aHeaders;
+
 	final protected function __declareArguments__() {
 		$vArguments							= [];
 		$vArguments["apiname"]				= ['$mValue', "nogalcoon"];
@@ -23,9 +25,11 @@ class nglCoon extends nglBranch implements inglBranch {
 		$vArguments["bodyauth"]				= ['$mValue', false]; // solo en metodos POST
 		$vArguments["ctype"]				= ['(string)$mValue', "json"]; // csv | json | text | xml
 		$vArguments["data"]					= ['$mValue'];
-		$vArguments["key"]					= (NGL_ALVIN!==null) ? ['$mValue', NGL_ALVIN] : ['$mValue', "*sTr0N6k3Y@"];
+		$vArguments["header"]				= ['$mValue', null];
+		$vArguments["key"]					= ['$this->SetKey($mValue)', "*sTr0N6k3Y@"];
 		$vArguments["method"]				= ['(string)$mValue', "POST"];
 		$vArguments["port"]					= ['$mValue', null];
+		$vArguments["sslverify"]			= ['self::call()->isTrue($mValue)', false];
 		$vArguments["token"]				= ['$mValue', null];
 		$vArguments["url"]					= ['(string)$mValue', null];
 		return $vArguments;
@@ -40,16 +44,14 @@ class nglCoon extends nglBranch implements inglBranch {
 	}
 
 	final public function __init__() {
+		$this->aHeaders = [];
 	}
 
 
 	public function request() {
 		list($mData,$sURL,$sToken,$sCType) = $this->getarguments("data,url,token,ctype", \func_get_args());
-		$sMethod = \strtoupper($this->argument("method"));
-		$nPort = $this->argument("port");
-		$sAuth = $this->argument("auth")." ".$sToken;
-		$bBodyAuth = $this->argument("bodyauth");
-
+		$sMethod = \strtoupper($this->method);
+		$sAuth = $this->auth." ".$sToken;
 		$sCType = strtolower($sCType);
 		$mContent = "";
 
@@ -57,7 +59,7 @@ class nglCoon extends nglBranch implements inglBranch {
 			case "json":
 				$sContentType = "application/json";
 				if($sMethod=="POST") {
-					if($bBodyAuth) {
+					if($this->bodyauth) {
 						if(!\is_array($mData)) { $mData = \json_decode($mData); }
 						$mData["NGL-REQUEST-AUTHORIZATION"] = $sAuth;
 					}
@@ -70,7 +72,7 @@ class nglCoon extends nglBranch implements inglBranch {
 			case "xml":
 				$sContentType = "application/xml";
 				if($sMethod=="POST") {
-					if($bBodyAuth) {
+					if($this->bodyauth) {
 						if(!\is_array($mData)) { $mData = self::call("shift")->convert($mData, "xml-array"); }
 						$mData["NGL-REQUEST-AUTHORIZATION"] = $sAuth;
 					}
@@ -84,7 +86,7 @@ class nglCoon extends nglBranch implements inglBranch {
 			case "csv":
 				$sContentType = "text/csv";
 				if($sMethod=="POST") {
-					if($bBodyAuth) {
+					if($this->bodyauth) {
 						if(!\is_array($mData)) { $mData = self::call("shift")->convert($mData, "csv-array"); }
 						$mData["NGL-REQUEST-AUTHORIZATION"] = $sAuth;
 					}
@@ -97,7 +99,7 @@ class nglCoon extends nglBranch implements inglBranch {
 			case "text":
 				$sContentType = "text/plain";
 				if($sMethod=="POST") {
-					if($bBodyAuth) {
+					if($this->bodyauth) {
 						if(!\is_array($mData)) {
 							$sToParse = $mData;
 							\parse_str($sToParse, $mData);
@@ -122,11 +124,14 @@ class nglCoon extends nglBranch implements inglBranch {
 			}
 
 			$curl = \curl_init($sURL);
-			if($nPort!==null) { \curl_setopt($curl, CURLOPT_PORT, $nPort); }
+			if($this->port!==null) { \curl_setopt($curl, CURLOPT_PORT, $this->port); }
 			\curl_setopt($curl, CURLOPT_HEADER, false);
 			\curl_setopt($curl, CURLOPT_HTTPHEADER, $aHeaders); 
 			\curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
 			\curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+			\curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, $this->sslverify);
+			\curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, $this->sslverify);
+
 			if($sMethod=="POST") {
 				\curl_setopt($curl, CURLOPT_POSTFIELDS, $mContent);
 				\curl_setopt($curl, CURLOPT_POST, 1);
@@ -146,7 +151,7 @@ class nglCoon extends nglBranch implements inglBranch {
 		$mBody			= $sInput = \file_get_contents("php://input");
 		$aSelf			= self::call("sysvar")->SELF;
 
-		$sCType = $this->argument("ctype");
+		$sCType = $this->ctype;
 		$sContentType = (isset($aHeaders["content-type"])) ? $aHeaders["content-type"] : $sCType;
 		switch($sContentType) {
 			case "json":
@@ -177,9 +182,9 @@ class nglCoon extends nglBranch implements inglBranch {
 				break;
 		}
 
-		if($this->argument("ctype")===null) { $this->args("ctype", $sCType); }
+		if($this->ctype===null) { $this->args("ctype", $sCType); }
 
-		if($this->argument("bodyauth")) { $aHeaders["authorization"] = $mBody["NGL-REQUEST-AUTHORIZATION"]; }
+		if($this->bodyauth) { $aHeaders["authorization"] = $mBody["NGL-REQUEST-AUTHORIZATION"]; }
 		if(isset($aHeaders["authorization"])) {
 			$aAuth = \explode(" ", $aHeaders["authorization"], 2);
 			$sAuthMethod = \strtolower($aAuth[0]);
@@ -209,19 +214,28 @@ class nglCoon extends nglBranch implements inglBranch {
 		return $aReturn;
 	}
 
+	public function setheader() {
+		list($mHeader = $this->getarguments("header", func_get_args());
+		$aHeader = \is_array($mHeader) ? $mHeader : sefl::call()->explodeTrim(":", $mHeader, 2);
+		$this->aHeaders[$aHeader[0]] = (\count($aHeader)>1) ? $aHeader[1] : "";
+		return $this;
+	}
+
 	public function response() {
 		list($aData,$sToken,$sCType) = $this->getarguments("data,token,ctype", func_get_args());
-		$sApiName = $this->argument("apiname");
-
 		if(!in_array($sCType, ["csv","json","text","xml"])) { $sCType = "json"; }
+
+		foreach($this->aHeaders as $sHeader => $mValue) {
+			\header($sHeader":".$mValue, true);
+		}
 
 		if($sCType=="json" || $sCType=="xml") {
 			$aResponse = [];
-			$aResponse["api"]			= $sApiName;
+			$aResponse["api"]			= $this->apiname;
 			$aResponse["timestamp"]		= \time();
 			$aResponse["datetime"]		= \date("Y-m-d H:i:s", $aResponse["timestamp"]);
 			if($sToken!==null) {
-				$aResponse["token"] 	= self::call()->tokenEncode($sToken, $this->argument("key"), false);
+				$aResponse["token"] 	= self::call()->tokenEncode($sToken, $this->key, false);
 			}
 			$aResponse["count"]			= (\is_array($aData)) ? \count($aData) : 0;
 			$aResponse["data"]			= $aData;
@@ -239,12 +253,27 @@ class nglCoon extends nglBranch implements inglBranch {
 
 	public function tokenEncode() {
 		list($sToken) = $this->getarguments("token", func_get_args());
-		return self::call()->tokenEncode($sToken, $this->argument("key"), "ALVIN TOKEN");
+		return self::call()->tokenEncode($sToken, $this->key, "ALVIN TOKEN");
 	}
 
 	public function tokenDecode() {
 		list($sToken) = $this->getarguments("token", func_get_args());
-		return self::call()->tokenDecode($sToken, $this->argument("key"));
+		return self::call()->tokenDecode($sToken, $this->key);
+	}
+
+	protected function SetKey($sKey) {
+		if(!empty($sKey) {
+			return $sKey;
+		} else {
+			if(NGL_ALVIN!==true) {
+				return NGL_ALVIN;
+			} else if(\file_exists(NGL_PATH_DATA."/alvin/public.key") && NGL_ALVIN!==null) {
+				return \file_get_contents(NGL_PATH_DATA."/alvin/public.key");
+			} else {
+				return "*sTr0N6k3Y@";
+			}
+		}
+		return $sKey;
 	}
 }
 

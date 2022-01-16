@@ -59,6 +59,7 @@ class nglValidate extends nglTrunk {
 	protected $me			= "validate";
 	protected $object		= "validate";
 	private $bCheckError 	= false;
+	private $aConfig;
 	private $mVariables;
 	private $vVariables;
 	private $vRegex;
@@ -68,12 +69,13 @@ class nglValidate extends nglTrunk {
 
 		if(\file_exists(NGL_PATH_CONF.NGL_DIR_SLASH."validate.conf")) {
 			$sConfig = \file_get_contents(NGL_PATH_CONF.NGL_DIR_SLASH."validate.conf");
-			$vConfig = self::parseConfigString($sConfig, true);
+			$aConfig = self::parseConfigString($sConfig, true);
+			$this->aConfig = $aConfig;
 
-			if(isset($vConfig["request"])) {
-				if(isset($vConfig["request"]["proccess"]) && self::call()->isTrue($vConfig["request"]["proccess"])) {
-					if(isset($vConfig["request"]["from"])) {
-						$this->request($vConfig["request"]["from"]);
+			if(isset($aConfig["request"])) {
+				if(!empty($aConfig["request"]["proccess"])) {
+					if(isset($aConfig["request"]["from"])) {
+						$this->request($aConfig["request"]["from"]);
 					} else {
 						$this->request();
 					}
@@ -259,13 +261,15 @@ class nglValidate extends nglTrunk {
 		"type" : "private",
 		"description" : "Obtiene la configuración de un archivo <b>.json</b> y la retorna en como un Array",
 		"parameters" : {
-			"$sRulesFile" : ["string", "Nombre del archivo <b>.json</b> ubicado en la carpeta <b>NGL_PATH_VALIDATE</b>"]
+			"$sRulesFile" : ["string", "ruta del archivo <b>.json</b> con las reglas de validacion"]
 		},
 		"return" : "array"
 	} **/
 	private function GetRulesFile($sRulesFile) {
-		if(\file_exists(NGL_PATH_VALIDATE.NGL_DIR_SLASH.$sRulesFile.".json")) {
-			$sRules = \file_get_contents(NGL_PATH_VALIDATE.NGL_DIR_SLASH.$sRulesFile.".json");
+		$sRulesFile = self::call("files")->absPath($sRulesFile);
+		$sRulesFile = self::call()->sandboxPath($sRulesFile);
+		if(\file_exists($sRulesFile)) {
+			$sRules = \file_get_contents($sRulesFile);
 			$sRules = \trim($sRules);
 			return \json_decode($sRules, true);
 		}
@@ -321,7 +325,7 @@ class nglValidate extends nglTrunk {
 		}
 
 		if($bProccess || !isset($_SERVER["HTTP_REFERER"])) {
-			$_REQUEST = $this->validate($_REQUEST, "REQUEST");
+			$_REQUEST = $this->validate($_REQUEST, $this->aConfig["request"]["proccess"]);
 		} else {
 			$_REQUEST = [];
 		}

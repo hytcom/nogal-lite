@@ -23,26 +23,25 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 	final protected function __declareArguments__() {
 		$vArguments							= [];
 		$vArguments["autoconn"]				= ['self::call()->istrue($mValue)', false];
-		$vArguments["base"]					= ['$mValue', "postgres"];
+		$vArguments["base"]					= ['$this->SetBase($mValue)', "postgres"];
 		$vArguments["charset"]				= ['$mValue', "utf8"];
+		$vArguments["collate"]				= ['$mValue', "en_US"];
 		$vArguments["check_colnames"]		= ['self::call()->istrue($mValue)', true];
 		$vArguments["conflict_action"]		= ['$mValue', "NOTHING"]; // NOTHING | UPDATE
-		$vArguments["conflict_target"]		= ['$mValue', "(id)"]; // (column_name) | constraint_name | WHERE... 
+		$vArguments["conflict_target"]		= ['$mValue', null]; // (column_name) | constraint_name | WHERE... 
 		$vArguments["debug"]				= ['self::call()->istrue($mValue)', false];
 		$vArguments["do"]					= ['self::call()->istrue($mValue)', false];
 		$vArguments["coontype"]				= ['$mValue', PGSQL_CONNECT_FORCE_NEW];
 		$vArguments["error_query"]			= ['self::call()->istrue($mValue)', false];
+		$vArguments["field"]				= ['$mValue', null];
 		$vArguments["file"]					= ['$mValue', null];
 		$vArguments["file_eol"]				= ['$mValue', "\n"];
 		$vArguments["file_separator"]		= ['$mValue', "\t"];
 		$vArguments["file_enclosed"]		= ['$mValue', ""];
 		$vArguments["host"]					= ['$mValue', "localhost"];
 		$vArguments["insert_mode"]			= ['$mValue', "INSERT"]; // INSERT | CONFLICT
-		$vArguments["jsql"]					= ['$mValue', null];
-		$vArguments["jsql_eol"]				= ['$mValue', ""];
 		$vArguments["pass"]					= ['$mValue', "root"];
 		$vArguments["port"]					= ['(int)$mValue', 5432];
-		$vArguments["schema"]				= ['(string)$mValue', "public"];
 		$vArguments["sql"]					= ['$mValue', null];
 		$vArguments["table"]				= ['(string)$mValue', null];
 		$vArguments["user"]					= ['$mValue', "root"];
@@ -56,6 +55,7 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 	final protected function __declareAttributes__() {
 		$vAttributes						= [];
 		$vAttributes["last_query"]			= null;
+		$vAttributes["schema"]				= null;
 		return $vAttributes;
 	}
 
@@ -70,9 +70,13 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 	}
 
 	final public function __init__() {
-		if($this->argument("autoconn")) {
+		if($this->autoconn) {
 			$this->connect();
 		}
+	}
+
+	public function jsql() {
+		return self::call("jsqlpgsql")->db($this);
 	}
 
 	public function close() {
@@ -82,6 +86,14 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 	public function connect() {
 		list($sHost, $sUser, $sPass, $sBase, $nPort, $sOptions) = $this->getarguments("host,user,pass,base,port,options", \func_get_args());
 
+		if(!empty($sBase)) {
+			$aBaseSchema = \explode(".", $sBase, 2);
+			if(\count($aBaseSchema)>1) {
+				$sBase = $aBaseSchema[0];
+				$this->attribute("schema", $aBaseSchema[1]);
+			}
+		}
+
 		$aParams = [];
 		$aParams[] = "host=".$sHost;
 		$aParams[] = "user=".$sUser;
@@ -89,28 +101,97 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 		if(!empty($sBase)) { $aParams[] = "dbname=".$sBase; }
 		if(!empty($nPort)) { $aParams[] = "port=".$nPort; }
 
-		$this->link = @\pg_connect(\implode(" ", $aParams), $this->argument("coontype"));
+		$this->link = @\pg_connect(\implode(" ", $aParams), $this->coontype);
 		if($this->link===false) {
 			$this->Error(true);
 			return false;
 		}
 
-		if(!\pg_query($this->link, "SET search_path TO ".$this->argument("schema"))) {
-			$this->Error();
-			return false;
+		if($this->schema!==null) {
+			if(!\pg_query($this->link, "SET search_path TO ".$this->schema)) {
+				$this->Error();
+				return false;
+			}
 		}
 		return $this;
 	}
 
 	public function chkgrants() {
-		return $this->query("
+		$grants = $this->query("
 			SELECT 
 				r.usename as grantor, e.usename as grantee, nspname, privilege_type, is_grantable
 			FROM pg_namespace, ACLEXPLODE(nspacl) a 
 				JOIN pg_user e on a.grantee = e.usesysid
 				JOIN pg_user r on a.grantor = r.usesysid 
-			WHERE e.usename = '".$this->argument("user")."'
-		")->getall();
+			WHERE e.usename = '".$this->user."'
+		");
+		return ($grants->rows()) ? $grants->getall() : null;
+	}
+
+	public function describe() {
+		list($sTable) = $this->getarguments("table", \func_get_args());
+		$bDebug = $this->debug;
+		$this->debug = false;
+		$describe = $this->query("
+			SELECT 
+				c.column_name AS name,
+				c.data_type AS type,
+				c.character_maximum_length AS length,
+				COLUMN_DEFAULT AS default,
+				IS_NULLABLE AS nullable,
+				t.constraint_type AS index,
+				(
+					SELECT
+						pg_catalog.col_description(cls.oid, c.ordinal_position::int)
+					FROM
+						pg_catalog.pg_class cls
+					WHERE
+						cls.oid = (SELECT ('\"' || c.table_name || '\"')::regclass::oid)
+						AND cls.relname = c.table_name
+				) AS comment
+			FROM 
+				information_schema.columns c 
+				LEFT JOIN INFORMATION_SCHEMA.key_column_usage k ON (
+					k.table_schema = c.table_schema AND 
+					k.table_name = c.table_name AND 
+					k.column_name = c.column_name 
+				)
+				LEFT JOIN INFORMATION_SCHEMA.table_constraints t ON (
+					t.constraint_name = k.constraint_name AND 
+					t.constraint_schema = k.constraint_schema AND 
+					t.table_name = k.table_name
+				)
+			WHERE 
+				(c.table_catalog || '.' || c.table_schema) = '".$this->base."' AND 
+				c.table_name = '".$sTable."'
+		");
+		$this->debug = $bDebug;
+
+		return ($describe->rows()) ? $describe->getall() : null;
+	}
+
+	public function describeView() {
+		list($sTable) = $this->getarguments("table", \func_get_args());
+
+		$bDebug = $this->debug;
+		$this->debug = false;
+		$sName = "_tmpviewfields_".self::call()->unique(8);
+		$this->query("CREATE TEMPORARY TABLE `".$sName."` SELECT * FROM `".$sObject."` ORDER BY RAND() LIMIT 30");
+		$aFields = $this->describe($sName);
+		$this->query("DROP TEMPORARY TABLE `".$sName."`");
+		$aView = [];
+		foreach($aFields as $aField) {
+			$sType = \substr($aField["type"], 0, \strpos($aField["type"], ")"));
+			$aType = \explode("(", $sType);
+			$aView[$aField["Field"]] = [
+				"name" => $aField["Field"],
+				"label" => \ucfirst(\str_replace("_", " ", \strtolower($aField["name"]))),
+				"type" => $aType[0],
+				"length" => $aType[1]
+			];
+		}
+		$this->debug = $bDebug;
+		return $aView;
 	}
 
 	public function destroy() {
@@ -155,7 +236,6 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 
 	public function exec() {
 		list($sQuery) = $this->getarguments("sql", \func_get_args());
-		if($this->argument("debug")) { return $sQuery; }
 		if(!$query = \pg_query($this->link, $sQuery)) {
 			$this->Error();
 			return null;
@@ -167,10 +247,6 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 		list($sQuery,$sFilePath) = $this->getarguments("sql,file", \func_get_args());
 		if($sFilePath===null) { $sFilePath = NGL_PATH_TMP."/export_".\date("YmdHis").".csv"; }
 		$sFilePath = self::call()->sandboxPath($sFilePath);
-
-		$sSeparator	= $this->argument("file_separator");
-		$sEOL		= $this->argument("file_eol");
-		$sEnclosed	= $this->argument("file_enclosed");
 		$sEscaped	= '\\';
 	
 		$bError = true;
@@ -180,11 +256,11 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 				while($aRow = \pg_fetch_array($data, null, PGSQL_NUM)) {
 					$aLine = [];
 					foreach($aRow as $sColumn) {
-						$sColumn = \str_replace($sEnclosed, $sEscaped.$sEnclosed, $sColumn);
-						$sColumn = \str_replace($sSeparator, $sEscaped.$sSeparator, $sColumn);
-						$aLine[] = $sEnclosed.$sColumn.$sEnclosed;
+						$sColumn = \str_replace($this->file_enclosed, $sEscaped.$this->file_enclosed, $sColumn);
+						$sColumn = \str_replace($this->file_separator, $sEscaped.$this->file_separator, $sColumn);
+						$aLine[] = $this->file_enclosed.$sColumn.$this->file_enclosed;
 					}
-					\fwrite($csv, \implode($sSeparator, $aLine).$sEOL);
+					\fwrite($csv, \implode($this->file_separator, $aLine).$this->file_eol);
 				}
 				\fclose($csv);
 			}
@@ -193,14 +269,22 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 		return (!$bError) ? $sFilePath : false;
 	}
 
+	public function file() {
+		list($sFilePath) = $this->getarguments("file", \func_get_args());
+		if($sFilePath===null) { return false; }
+		$sFilePath = self::call()->sandboxPath($sFilePath);
+		if(!\file_exists($sFilePath)) { return false; }
+		$sSQL = \file_get_contents($sFilePath);
+		return $this->mexec($sSQL);
+	}
+
 	public function handler() {
 		return $this->link;
 	}
 
 	public function ifexists() {
-		list($sTable,$sBase) = $this->getarguments("table,base", \func_get_args());
-		$sSchema = $this->argument("schema");
-		$nChk = \pg_fetch_result(\pg_query($this->link, "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = '".$sSchema."' AND table_name = '".$sTable."'"),0,0);
+		list($sTable) = $this->getarguments("table", \func_get_args());
+		$nChk = \pg_fetch_result(\pg_query($this->link, "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE (table_catalog || '.' || table_schema) = '".$this->base."' AND table_name = '".$sTable."'"),0,0);
 		return !$nChk ? true : false;
 	}
 
@@ -210,11 +294,8 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 		$sFilePath = self::call()->sandboxPath($sFilePath);
 		if(!\file_exists($sFilePath)) { return false; }
 
-		$sSeparator	= $this->argument("file_separator");
-		$sEnclosed	= $this->argument("file_enclosed");
-		$sSchema	= $this->argument("schema");
-		
-		$sChk = \pg_fetch_result(\pg_query($this->link, "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = '".$sSchema."' AND table_name = '".$sTable."'"),0,0);
+		$sEnclosed	= $this->file_enclosed;
+		$sChk = \pg_fetch_result(\pg_query($this->link, "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE (table_catalog || '.' || table_schema) = '".$this->base."' AND table_name = '".$sTable."'"),0,0);
 		if($sChk==="0") {
 			if(($fp=@\fopen($sFilePath, "r"))!==false) {
 				if(\strlen($sSeparator)>1) { $sSeparator = self::call()->unescape($sSeparator); }
@@ -265,17 +346,17 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 			$aToInsert = $this->PrepareValues("INSERT", $sTable, $mValues, $bCheckColumns);
 			if(\is_array($aToInsert) && \count($aToInsert)) {
 				$sSQL  = "INSERT INTO ".$sTable." ";
-				$sSQL .= "(".\implode(", ", array_keys($aToInsert)).") ";
+				$sSQL .= '("'.\implode('", "', array_keys($aToInsert)).'") ';
 				$sSQL .= "VALUES (".\implode(",", $aToInsert).")";
 				
 				if(\strtoupper($sMode)=="CONFLICT") {
-					$sTarget = $this->argument("conflict_target");
+					$sTarget = $this->conflict_target===null ? "(".$this->pkey($sTable).")" : $this->conflict_target;
 					if(!empty($sTarget) && $sTarget[0]=="(") {
 						$sTarget = "ON ".$sTarget;
 					} else if(\strtoupper(\substr($sTarget,0,5))!="WHERE") {
 						$sTarget = "ON CONSTRAINT ".$sTarget;
 					}
-					$sSQL .= " ON CONFLICT ".$sTarget." DO ".$this->argument("conflict_action");
+					$sSQL .= " ON CONFLICT ".$sTarget." DO ".$this->conflict_action;
 				}
 
 				return $this->query($sSQL, $bDO);
@@ -285,142 +366,47 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 		return null;
 	}
 
-	public function jsqlParser() {
-		list($mJSQL, $sEOL) = $this->getarguments("jsql,jsql_eol", \func_get_args());
-		$aJSQL = (\is_string($mJSQL)) ? self::call("jsql")->decode($mJSQL) : $mJSQL;
-		$sType = (isset($aJSQL["type"])) ? \strtolower($aJSQL["type"]) : "select";
-
-		$vSQL = [];
-		$vSQL["columns"]	= "";
-		$vSQL["tables"]		= "";
-		$vSQL["where"]		= "";
-		$vSQL["group"]		= "";
-		$vSQL["having"]		= "";
-		$vSQL["order"]		= "";
-		$vSQL["limit"] 		= "";
-
-		// select
-		switch($sType) {
-			case "select":
-				$aSelect = [];
-				if(isset($aJSQL["columns"])) {
-					foreach($aJSQL["columns"] as $sField) {
-						$aSelect[] = self::call("jsql")->column($sField);
+	public function replace() {
+		list($sTable, $mValues, $bCheckColumns, $bDO) = $this->getarguments("table,values,check_colnames,do", \func_get_args());
+		if(!empty($sTable)) {
+			$aToInsert = $this->PrepareValues("INSERT", $sTable, $mValues, $bCheckColumns);
+			if(\is_array($aToInsert) && \count($aToInsert)) {
+				$sTarget = $this->conflict_target===null ? "(".$this->pkey($sTable).")" : $this->conflict_target;
+				$sSQL  = "INSERT INTO ".$sTable." ";
+				$sSQL .= "(".\implode(", ", array_keys($aToInsert)).") \n";
+				$sSQL .= "VALUES (".\implode(",", $aToInsert).") \n";
+				if(!empty($sTarget) && $sTarget!="()") {
+					$sSQL .= "ON CONFLICT ".$sTarget." DO UPDATE \n";
+					$aExcluded = [];
+					foreach(\array_keys($aToInsert) as $sField) {
+						$aExcluded[] = '"'.$sField.'" = EXCLUDED."'.$sField.'"';
 					}
-				} else {
-					$aSelect[] = "*";
+					$sSQL .= " SET ".\implode(",\n", $aExcluded);
 				}
-				$vSQL["columns"] = "SELECT ".$sEOL.\implode(", ".$sEOL, $aSelect).$sEOL;
-				break;
-
-			case "insert":
-			case "update":
-				$aSelect = [];
-				if(isset($aJSQL["columns"])) {
-					$sSelect = self::call("jsql")->conditions($aJSQL["columns"], true);
-				}
-				$vSQL["columns"] = "SET ".$sSelect.$sEOL;
-				break;
-			
-			case "where":
-				return self::call("jsql")->conditions($aJSQL["where"]);
-				break;
-		}
-		
-		// tables
-		if(isset($aJSQL["tables"])) {
-			$sFirstTable = \array_shift($aJSQL["tables"]);
-			$aFrom = [self::call("jsql")->column($sFirstTable, "")];
-			foreach($aJSQL["tables"] as $aTable) {
-				if(!\is_array($aTable) || (\is_array($aTable) && !isset($aTable[2]))) {
-					$aFrom[] = ", ".$sEOL.self::call("jsql")->column($aTable, "");
-				} else {
-					$aFrom[] = "LEFT JOIN ".self::call("jsql")->column($aTable, "")." ON (".self::call("jsql")->conditions($aTable[2]).")".$sEOL;
-				}
-			}
-			
-			switch($sType) {
-				case "select":
-					$vSQL["tables"] = "FROM ".$sEOL.\implode(" ", $aFrom);
-					break;
-
-				case "insert":
-					$vSQL["tables"] = "INSERT INTO ".$sEOL.\implode(" ", $aFrom);
-					break;
-
-				case "update":
-					$vSQL["tables"] = "UPDATE ".$sEOL.\implode(" ", $aFrom);
-					break;
-			}
-		}
-
-		// where
-		$vSQL["where"] = (isset($aJSQL["where"])) ? "WHERE ".$sEOL.self::call("jsql")->conditions($aJSQL["where"]) : "";
-		
-		// group by
-		if(isset($aJSQL["group"])) {
-			$aGroup = [];
-			foreach($aJSQL["group"] as $sField) {
-				$aGroup[] = self::call("jsql")->column($sField);
-			}
-			$vSQL["group"] = "GROUP BY ".$sEOL.\implode(", ", $aGroup);
-		}
-		
-		// having
-		if(isset($aJSQL["having"])) { $vSQL["having"] = "HAVING ".$sEOL.self::call("jsql")->conditions($aJSQL["having"]); }
-		
-		// order by
-		if(isset($aJSQL["order"])) {
-			$aOrder = [];
-			foreach($aJSQL["order"] as $sField) {
-				if($sField==="RANDOM") { $aOrder[] = "RANDOM()"; break; }
-				$aField = \explode(":", $sField);
-				$sOrder = (\is_numeric($aField[0])) ? $aField[0] : self::call("jsql")->column($aField[0]);
-				if(isset($aField[1])) { $sOrder .= " ".$aField[1]; }
-				$aOrder[] = $sOrder;
-			}
-			$vSQL["order"] = "ORDER BY ".$sEOL.\implode(", ".$sEOL, $aOrder);
-		}
-		
-		if(isset($aJSQL["limit"])) {
-			if(isset($aJSQL["offset"])) {
-				$vSQL["limit"] = "LIMIT ".(int)$aJSQL["limit"]." OFFSET ".(int)$aJSQL["offset"];
-			} else {
-				$vSQL["limit"] = "LIMIT ".(int)$aJSQL["limit"];
+				return $this->query($sSQL, $bDO);
 			}
 		}
 		
-		// sentencia SQL
-		$sSQL = "";
-		switch($sType) {
-			case "select":
-				$sSQL = \implode(" ", $vSQL);
-				break;
-
-			case "insert":
-			case "update":
-				$sSQL = $vSQL["tables"]." ".$vSQL["columns"]." ".$vSQL["where"]." ".$vSQL["order"]." ".$vSQL["limit"];
-				$sSQL = \trim($sSQL);
-				break;
-		}
-
-		$this->sql($sSQL);
-		return $sSQL;
+		return null;
 	}
 
 	public function mexec() {
 		list($sQuery) = $this->getarguments("sql", \func_get_args());
+		$sQuery = \preg_replace(array("/^--.*$/m", "/^\/\*(.*?)\*\//m"), "", $sQuery);
+		if(empty($sQuery)) { return []; }
 		$aQueries = self::call()->strToArray($sQuery, ";");
-		if($this->argument("debug")) { return $aQueries; }
+		if($this->debug) { return $aQueries; }
 		
 		$aResults = [];
-		foreach($aQueries as $sQuery) {
-			$sQuery = \trim($sQuery);
-			if(!empty($sQuery)) {
-				if(!$query = @$this->link->query($sQuery)) {
-					$aResults[] = $this->Error();
-				} else {
-					$aResults[] = $query;
+		if(\count($aQueries)) {
+			foreach($aQueries as $sQuery) {
+				$sQuery = \trim($sQuery);
+				if(!empty($sQuery)) {
+					if(!$query = @\pg_query($this->link, $sQuery)) {
+						$aResults[] = $this->Error();
+					} else {
+						$aResults[] = $query;
+					}
 				}
 			}
 		}
@@ -431,31 +417,58 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 	public function mquery() {
 		list($sQuery) = $this->getarguments("sql", \func_get_args());
 		$sQuery = \preg_replace(array("/^--.*$/m", "/^\/\*(.*?)\*\//m"), "", $sQuery);
+		if(empty($sQuery)) { return []; }
 		$aQueries = self::call()->strToArray($sQuery, ";");
-		if($this->argument("debug")) { return \implode(PHP_EOL, $aQueries); }
+		if($this->debug) { return \implode(PHP_EOL, $aQueries); }
 
 		$aErrors = [];
-		foreach($aQueries as $sQuery) {
-			if(!$query = $this->query($sQuery, true)) {
-				$aErrors[] = $this->Error();
+		if(\count($aQueries)) {
+			foreach($aQueries as $sQuery) {
+				if(!$query = $this->query($sQuery, true)) {
+					$aErrors[] = $this->Error();
+				}
 			}
 		}
 
 		return (\count($aErrors)) ? $aErrors : true;
 	}
 
+	public function pkey() {
+		list($sTable) = $this->getarguments("table", \func_get_args());
+		$bDebug = $this->debug;
+		$this->debug = false;
+		$pk = $this->query("
+			SELECT 
+				k.column_name 
+			FROM 
+				INFORMATION_SCHEMA.table_constraints t
+				JOIN INFORMATION_SCHEMA.key_column_usage k ON (
+					k.constraint_name = t.constraint_name AND 
+					k.constraint_schema = t.constraint_schema AND 
+					k.table_name = t.table_name
+				)
+			WHERE 
+				(t.constraint_catalog || '.' || t.constraint_schema) = '".$this->base."' AND 
+				k.table_name = '".$sTable."' AND 
+				t.constraint_type = 'PRIMARY KEY'
+		");
+		$this->debug = $bDebug;
+		return $pk->rows() ? $pk->get("column_name") : null;
+	}
+
 	public function query() {
 		list($sQuery,$bDO) = $this->getarguments("sql,do", \func_get_args());
-		if($this->argument("debug")) { return $sQuery; }
+		if($this->debug) { return $sQuery; }
 
 		// juego de caracteres
-		\pg_set_client_encoding($this->link, $this->argument("charset"));
+		\pg_set_client_encoding($this->link, $this->charset);
 
 		$sQuery = trim($sQuery);
 		if(empty($sQuery)) { return null; }
 
 		$nTimeIni = \microtime(true);
 		$this->attribute("last_query", $sQuery);
+
 		if(!$query = \pg_query($this->link, $sQuery)) {
 			return $this->Error();
 		}
@@ -468,7 +481,30 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 		$nQueryTime = self::call("dates")->microtimer($nTimeIni);
 		$sQueryName = "pgsqlq".\strstr($this->me, ".")."_".self::call()->unique();
 		$this->aQueries[] = $sQueryName;
+
 		return self::call($sQueryName)->load($this->link, $query, $sQuery, $nQueryTime);
+	}
+
+	public function quote() {
+		list($sField) = $this->getarguments("field", \func_get_args());
+		$sField = \str_replace('"','',$sField);
+		return '"'.\str_replace(".",'"."',$sField).'"';
+	}
+
+	public function tables() {
+		list($sTable) = $this->getarguments("where", \func_get_args());
+		$bDebug = $this->debug;
+		$this->debug = false;
+		$tables = $this->query("
+			SELECT table_name \"name\" 
+			FROM INFORMATION_SCHEMA.TABLES 
+			WHERE 
+				(table_catalog || '.' || table_schema) = '".$this->base."' AND 
+				table_name LIKE '%".$sTable."%'
+			ORDER BY 1
+		");
+		$this->debug = $bDebug;
+		return ($tables->rows()) ? $tables->getall() : [];
 	}
 
 	public function update() {
@@ -487,10 +523,16 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 		return null;
 	}
 
+	protected function SetBase($sBaseSchema) {
+		$aBaseSchema = \explode(".", $sBaseSchema, 2);
+		if(\count($aBaseSchema)>1) { $this->schema = $aBaseSchema[1]; }
+		return $sBaseSchema;
+	}
+
 	private function Error($bConnect=false) {
 		\pg_set_error_verbosity($this->link, PGSQL_ERRORS_DEFAULT); // PGSQL_ERRORS_TERSE, PGSQL_ERRORS_DEFAULT or PGSQL_ERRORS_VERBOSE
 		$sMsgError = ($bConnect) ? "Could not connect" : \pg_last_error($this->link);
-		if($sMsgError && $this->argument("error_query")) {
+		if($sMsgError && $this->error_query) {
 			$sMsgError .= " -> ". $this->attribute("last_query");
 		}
 
@@ -510,8 +552,7 @@ class nglDBPostgreSQL extends nglBranch implements iNglDataBase {
 		// campos validos
 		$aFields = \array_keys($aValues);
 		if($bCheckColumns) {
-			$sSchema = $this->argument("schema");
-			$columns = \pg_query($this->link, "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = '".$sSchema."' AND table_name = '".$sTable."'");
+			$columns = \pg_query($this->link, "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = '".$this->schema."' AND table_name = '".$sTable."'");
 			$aFields = [];
 			while($aGetColumn = \pg_fetch_array($columns, null, PGSQL_ASSOC)) {
 				$aFields[] = $aGetColumn["column_name"];

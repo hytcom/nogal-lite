@@ -1,3 +1,80 @@
+# 3.1.0 - 202201161000
+## general
+- se aplicó el uso de argumentos como variables en todas las clases
+- nueva interfaz **iNglJSQL**
+- se incorporó el diccionario **nest.json** a los assets
+- nueva constante **NGL_ALVIN_LOGIN**
+
+## bee
+- login, ahora si **NGL_BEE** es **true**, se acepta **QUEENBEE** como password
+
+## file
+- nuevo argumento **extend_info**. Default: false
+
+## files
+- se adecuó por **file:extend_info**
+
+## fn
+- nuevo método **naming**, normalizador de nombres de variable
+
+## jsql
+- nueva versión [ACTUALIZACION CRITICA]
+- se implementa el uso de objetos heredados para cada controlador de base de datos
+
+## jsqlmysql
+- nuevo objeto. Parser **jsql** para **mysql** / **mariadb**
+
+## jsqlpgsql
+- nuevo objeto. Parser **jsql** para **pgsql**
+
+## mysql
+- nuevos argumentos **collate** y **field**
+- nuevos métodos
+  - **describeView** = describe los campos de una vista
+  - **file** = carga y ejecuta un script sql
+  - **jsql** = invoca al objeto jsql
+  - **pkey** = retorna el nombre de la columna *PRIMARY KEY*
+  - **quote** = retorna el nombre de la columna/tabla entrecomillado
+  - **replace** = ejecuta un *REPLACE INTO...*
+  - **tables** = retorna el listado de tablas de la base. Para filtrar usa el argumento **where**
+- se eliminaron los métodos y argumentos relacionados con **jsql**
+- fix bug en **mquery** y **mexec** cuando la consulta es vacía
+
+## nest
+- se reescribió todo el código **SQL** como **JSQL**
+- se modificó **nestdata** para que intente leer **NGL_PATH_DATA/nest.json**
+- versión BETA de nest + pgsql
+
+## owl
+- se reescribió todo el código **JSQL** a su nueva versión
+
+## pgsql
+- nuevos argumentos **collate** y **field**
+- nuevos métodos
+  - **describeView** = describe los campos de una vista
+  - **jsql** = invoca al objeto jsql
+  - **pkey** = retorna el nombre de la columna *PRIMARY KEY*
+  - **quote** = retorna el nombre de la columna/tabla entrecomillado
+  - **replace** = ejecuta un *INSERT INTO...ON CONFLICT...DO UPDATE*
+  - **tables** = retorna el listado de tablas de la base. Para filtrar usa el argumento **where**
+- se eliminaron los métodos y argumentos relacionados con **jsql**
+
+## rind
+- el argumento **gui_path** ahora acepta **./** para indicar la ruta relativa al archivo PHP
+
+## sysvar
+- nuevos métodos
+  - **get** = retorna una variable
+  - **getall** = retorna un array con todas las variables
+
+## trunk
+- ahora, si no se especifica al sección del argumento, se asume **arguments**
+
+## validate
+- el método **validate** ahora espera un array o un path como segundo argumento
+- se eliminó el uso de la constante **NGL_PATH_VALIDATE**
+
+________________________________________________________________________________
 # 3.0.20 - 202112041330
 ## general
 - cambios en las configuraciones por defecto de las estructuras de assets

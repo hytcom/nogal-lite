@@ -201,7 +201,7 @@ class nglDBPostgreSQLQuery extends nglBranch implements iNglDBQuery {
 
 	public function load() {
 		list($link, $query, $sQuery, $nQueryTime) = $this->getarguments("link,query,sentence,query_time", \func_get_args());
-		
+
 		$this->db = $link;
 		$this->cursor = $query;
 		$this->attribute("sql", $sQuery);
@@ -211,13 +211,13 @@ class nglDBPostgreSQLQuery extends nglBranch implements iNglDBQuery {
 		$sSQL = \preg_replace("/^[^A-Z]*/i", "", $sSQL);
 		$sSQLCommand = \strtok($sSQL, " ");
 		$sSQLCommand = \strtoupper($sSQLCommand);
-		
+
 		if(\in_array($sSQLCommand, ["SELECT", "INSERT", "UPDATE", "REPLACE", "DELETE"])) {
 			$this->attribute("crud", $sSQLCommand);
 		} else {
 			$this->attribute("crud", false);
 		}
-		
+
 		return $this;
 	}
 

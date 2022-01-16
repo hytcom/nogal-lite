@@ -40,6 +40,7 @@ class nglOwl extends nglBranch {
 	private $nRelationshipsLevelLimit;
 	private $bViewFields;
 	private $query;
+	private $jsql;
 
 	final protected function __declareArguments__() {
 		$vArguments							= [];
@@ -55,7 +56,7 @@ class nglOwl extends nglBranch {
 		$vArguments["id"]					= ['$this->GetID($mValue)', null];
 		$vArguments["inherit"]				= ['self::call()->istrue($mValue)', false];
 		$vArguments["insert_mode"]			= ['$mValue', "INSERT"];
-		$vArguments["jsql"]					= ['$mValue', null];
+		$vArguments["jsqlq"]				= ['$mValue', null];
 		$vArguments["join_level"]			= ['(int)$mValue', 2];
 		$vArguments["owlog"]				= ['self::call()->istrue($mValue)', true];
 		$vArguments["owlog_changelog"]		= ['self::call()->istrue($mValue)', false];
@@ -149,57 +150,59 @@ class nglOwl extends nglBranch {
 
 	public function dbStructure() {
 		$aStructures = [];
-		$aStructures["mysql"] = <<<SQL
--- MySQL / MariaDB --------------------------------------------------------------
--- owl index --
-DROP TABLE IF EXISTS `__ngl_owl_index__`;
-CREATE TABLE `__ngl_owl_index__` (
-	`id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
-	`imya` CHAR(32) NOT NULL DEFAULT '' COMMENT 'imya del registro en la tabla de origen',
-	`role` char(32) DEFAULT NULL COMMENT 'role a partir del cual se obtiene acceso',
-	PRIMARY KEY (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Indice de los registros de las tablas que hagan uso de roles';
-CREATE INDEX `imya_idx` ON `__ngl_owl_index__` (`imya`);
-CREATE INDEX `role_idx` ON `__ngl_owl_index__` (`role`);
+		$aStructures[] = $this->jsql->query(<<<SQL
+{
+	"query": "create",
+	"table" : "__ngl_owl_index__",
+	"comment" : "Indice de los registros de las tablas que hagan uso de roles",
+	"attrs" : ["ENGINE=MyISAM", "DEFAULT", "CHARSET=utf8mb4", "COLLATE=utf8mb4_unicode_ci"],
+	"columns" : [
+		{"name":"id", "type":"INT", "index":"PRIMARY", "autoinc":"true"},
+		{"name":"imya", "type":"CHAR", "length":"32", "index":"INDEX", "comment":"imya del registro en la tabla de origen"},
+		{"name":"role", "type":"VARCHAR", "length":"32", "null":"true", "index":"INDEX", "default":"null", "comment":"role a partir del cual se obtiene acceso"}
+	]
+}
+SQL);
 
--- owl log --
-DROP TABLE IF EXISTS `__ngl_owl_log__`;
-CREATE TABLE `__ngl_owl_log__` (
-	`id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-	`imya` CHAR(32) NOT NULL DEFAULT '' COMMENT 'imya del registro en la tabla de origen',
-	`user` SMALLINT UNSIGNED DEFAULT NULL COMMENT 'id del usuario que ejecutó la acción',
-	`action` ENUM('insert','delete','suspend','toggle','update','unsuspend') NOT NULL DEFAULT 'insert' COMMENT 'tipo de acción',
-	`date` DATETIME NOT NULL COMMENT 'fecha y hora de la ejecución',
-	`ip` CHAR(45) NULL DEFAULT NULL COMMENT 'dirección de IP del usuario',
-	`changelog` MEDIUMTEXT NULL DEFAULT NULL COMMENT 'cuando el argumento owlog_changelog del objeto OWL sea true, se almacenará un JSON con la versión anterior de los datos',
-	PRIMARY KEY (`id`) 
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Log de operaciones realizadas mediante el objeto OWL';
-CREATE INDEX `imya_idx` ON `__ngl_owl_log__` (`imya`);
-CREATE INDEX `user_idx` ON `__ngl_owl_log__` (`user`);
+$aStructures[] = $this->jsql->query(<<<SQL
+{
+	"query": "create",
+	"table" : "__ngl_owl_log__",
+	"comment" : "Log de operaciones realizadas mediante el objeto OWL",
+	"attrs" : ["ENGINE=MyISAM", "DEFAULT", "CHARSET=utf8mb4", "COLLATE=utf8mb4_unicode_ci"],
+	"columns" : [
+		{"name":"id", "type":"INT", "index":"PRIMARY", "autoinc":"true"},
+		{"name":"imya", "type":"CHAR", "length":"32", "index":"INDEX", "comment":"imya del registro en la tabla de origen"},
+		{"name":"user", "type":"SMALLINT", "null":"true", "index":"INDEX", "comment":"id del usuario que ejecutó la acción"},
+		{"name":"action", "type":"ENUM", "length":"'insert','delete','suspend','toggle','update','unsuspend'", "default":"'insert'", "comment":"tipo de acción"},
+		{"name":"date", "type":"DATETIME", "comment":"fecha y hora de la ejecución"},
+		{"name":"ip", "type":"VARCHAR", "length":"35", "null":"true", "comment":"dirección de IP del usuario"},
+		{"name":"changelog", "type":"MEDIUMTEXT", "null":"true", "comment":"cuando el argumento owlog_changelog del objeto OWL sea true, se almacenará un JSON con la versión anterior de los datos"}
+	]
+}
+SQL);
 
--- owl structures --
-DROP TABLE IF EXISTS `__ngl_owl_structure__`;
-CREATE TABLE `__ngl_owl_structure__` (
-	`id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-	`name` CHAR(128) NOT NULL COMMENT 'nombre del objeto',
-	`code` CHAR(12) NOT NULL COMMENT 'código del objeto. Que luego formará parte de el IMYA de cada registro del mismo',
-	`roles` ENUM('0', '1', '2', '3') NOT NULL DEFAULT '0' COMMENT 'determina si el objeto esta sujeto a roles: 0=no, 1=si',
-	`columns` TEXT NOT NULL COMMENT 'JSON con los nombres de las columnas del objeto',
-	`foreignkey` TEXT NULL COMMENT 'relaciones externas',
-	`relationship` TEXT NULL COMMENT 'relaciones con otros objetos en formato JSON',
-	`validate_insert` TEXT NULL COMMENT 'reglas del validación para los datos para el objeto VALIDATE al momento del INSERT',
-	`validate_update` TEXT NULL COMMENT 'reglas del validación para los datos para el objeto VALIDATE al momento del UPDATE',
-	PRIMARY KEY (`id`) 
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Estructuras de los objetos (tablas) de el entorno OWL';
-CREATE INDEX `name_idx` ON `__ngl_owl_structure__` (`name`);
-CREATE UNIQUE INDEX `code_idx` ON `__ngl_owl_structure__` (`code`);
-SQL;
+$aStructures[] = $this->jsql->query(<<<SQL
+{
+	"query": "create",
+	"table" : "__ngl_owl_structure__",
+	"comment" : "Estructuras de los objetos (tablas) de el entorno OWL",
+	"attrs" : ["ENGINE=MyISAM", "DEFAULT", "CHARSET=utf8mb4", "COLLATE=utf8mb4_unicode_ci"],
+	"columns" : [
+		{"name":"id", "type":"INT", "index":"PRIMARY", "autoinc":"true"},
+		{"name":"name", "type":"VARCHAR", "length":"128", "index":"INDEX", "comment":"nombre del objeto"},
+		{"name":"code", "type":"VARCHAR", "length":"32", "index":"UNIQUE", "comment":"código del objeto. Que luego formará parte de el IMYA de cada registro del mismo"},
+		{"name":"roles", "type":"ENUM", "length":"'0', '1', '2', '3'", "default":"'1'", "comment":"determina si el objeto esta sujeto a roles"},
+		{"name":"columns", "type":"TEXT", "comment":"JSON con los nombres de las columnas del objeto"},
+		{"name":"foreignkey", "type":"TEXT", "null":"true", "comment":"relaciones externas"},
+		{"name":"relationship", "type":"TEXT", "null":"true", "comment":"relaciones con otros objetos en formato JSON"},
+		{"name":"validate_insert", "type":"TEXT", "null":"true", "comment":"reglas del validación para los datos para el objeto VALIDATE al momento del INSERT"},
+		{"name":"validate_update", "type":"TEXT", "null":"true", "comment":"reglas del validación para los datos para el objeto VALIDATE al momento del UPDATE"}
+	]
+}
+SQL);
 
-		if($this->db && isset($aStructures[$this->db->object])) {
-			return $aStructures[$this->db->object];
-		}
-
-		return "";
+		return \implode("\n\n", $aStructures);
 	}
 
 	public function dbMysqlStructure() {
@@ -275,7 +278,7 @@ SQL;
 			}
 		} else {
 			if(!$this->attribute("current")) { self::errorMessage($this->object, 1002); }
-			$sWhere = ($mID) ? '{"where":[["id","eq","('.$mID.')]","OR",["imya","eq","('.$mID.')"]]}' : null;
+			$sWhere = ($mID) ? '{"where":[["[id]","eq","'.$mID.']","OR",["[imya]","eq","'.$mID.'"]]}' : null;
 			$children = $this->child($this->sChildTable)->getall($sWhere, false, false, false);
 			if($children->rows()) {
 				$aNewIDs[$this->sChildTable] = [];
@@ -295,7 +298,7 @@ SQL;
 		if(!$this->bChildMode) {
 			if(!$this->sObject) { self::errorMessage($this->object, 1001); }
 			$nID = ($mID) ? $this->GetID($mID, $this->sObject) : $this->attribute("current");
-			$sJSQL = '{"where":[["'.$this->sObject.'.id","eq","('.$nID.')"]]}';
+			$sJSQL = '{"where":[["['.$this->sObject.'.id]","eq","'.$nID.'"]]}';
 			$sView = $this->view("jsql",$sAliasMode,$mJoins,$mChildren,$sColumns,$bParent,$bDeleted);
 		} else {
 			if(!$this->attribute("current")) { self::errorMessage($this->object, 1002); }
@@ -303,9 +306,9 @@ SQL;
 			$nID = $this->GetID($mID, $sTable);
 			$nPID = $this->attribute("current");
 			$sJSQL = '{"where":[
-				["'.$this->sChildTableAlias.'.id","eq","('.$nID.')"],
+				["['.$this->sChildTableAlias.'.id]","eq","'.$nID.'"],
 				"AND",
-				["'.$this->sChildTableAlias.'.pid","eq","('.$nPID.')"]
+				["['.$this->sChildTableAlias.'.pid]","eq","'.$nPID.'"]
 			]}';
 			$sView = $this->viewchildren("jsql",$sAliasMode,$mJoins,$bDeleted);
 		}
@@ -313,7 +316,7 @@ SQL;
 		if($sView==false) { return self::errorMessage($this->object, 1001); }
 		
 		if($this->bChildMode) { $this->bChildMode = false; }
-		$sJSQL = $this->JsonAppener($sJSQL, $sView);
+		$sJSQL = $this->jsql->appener($sJSQL, $sView);
 
 		$this->attribute("result", $this->query($sJSQL));
 		return $this->attribute("result");
@@ -324,7 +327,6 @@ SQL;
 
 		// filtro
 		$sFilter = ($sFilter!==null) ? \ltrim($sFilter) : "";
-		
 		if(!$this->bChildMode) {
 			$sJSQL = $this->view("jsql",$sAliasMode,$mJoins,$mChildren,$sColumns,$bParent,$bDeleted);
 			if($sJSQL==false) { return self::errorMessage($this->object, 1001); }
@@ -334,22 +336,21 @@ SQL;
 
 			if($this->attribute("current")) {
 				if(!empty($sFilter)) { 
-					$sChildrenWhere = '{"where": [["'.$this->sChildTableAlias.'.pid", "eq", "("'.$this->attribute("current").'")"], "AND"]}';
+					$sChildrenWhere = '{"where": [["['.$this->sChildTableAlias.'.pid]", "eq", "'.$this->attribute("current").'"], "AND"]}';
 				} else {
-					$sChildrenWhere = '{"where": [["'.$this->sChildTableAlias.'.pid", "eq", "("'.$this->attribute("current").'")"]]}';
+					$sChildrenWhere = '{"where": [["['.$this->sChildTableAlias.'.pid]", "eq", "'.$this->attribute("current").'"]]}';
 				}
 
-				$sJSQL = $this->JsonAppener($sJSQL, $sChildrenWhere);
+				$sJSQL = $this->jsql->appener($sJSQL, $sChildrenWhere);
 			}
 		}
 
 		// aplicamos filtros
 		if(!empty($sFilter)) {
-			$sJSQL = $this->JsonAppener($sJSQL, $sFilter);
+			$sJSQL = $this->jsql->appener($sJSQL, $sFilter);
 		}
 
 		if($this->bChildMode) { $this->bChildMode = false; }
-
 		$this->attribute("result", $this->query($sJSQL));
 		return $this->attribute("result");
 	}
@@ -357,18 +358,18 @@ SQL;
 	public function getByImya() {
 		list($sImya) = $this->getarguments("id", \func_get_args());
 
-		$sSQL = $this->JsqlParser('{
+		$sSQL = $this->jsql->query('{
 			"columns":["name"],
 			"tables":["__ngl_owl_structure__"],
-			"where":[["code","eq","('.\substr($sImya, 0, 12).')"]]
+			"where":[["[code]","eq","'.\substr($sImya, 0, 12).'"]]
 		}');
 		$table = $this->db->query($sSQL);
 
 		if($table->rows()) {
 			$sTable = $table->get("name");
-			$sSQL = $this->JsqlParser('{
+			$sSQL = $this->jsql->query('{
 				"tables":["'.$sTable.'"],
-				"where":[["imya","eq","('.$sImya.')"]]
+				"where":[["[imya]","eq","'.$sImya.'"]]
 			}');
 			$data = $this->db->query($sSQL);
 			if($data->rows()) {
@@ -381,10 +382,10 @@ SQL;
 	public function imyaOf() {
 		list($sImya) = $this->getarguments("id", \func_get_args());
 
-		$sSQL = $this->JsqlParser('{
+		$sSQL = $this->jsql->query('{
 			"columns":["name"],
 			"tables":["__ngl_owl_structure__"],
-			"where":[["code","eq","('.\substr($sImya, 0, 12).')"]]
+			"where":[["[code]","eq","'.\substr($sImya, 0, 12).'"]]
 		}');
 		$table = $this->db->query($sSQL);
 
@@ -444,7 +445,7 @@ SQL;
 		}
 
 		// insercion
-		if($this->argument("escape")) { $vData = $this->db->escape($vData); }
+		if($this->escape) { $vData = $this->db->escape($vData); }
 		$insert = $this->db->insert($sTable, $vData, $sMode);
 		$nRowID = null;
 		if($insert) {
@@ -484,14 +485,15 @@ SQL;
 		list($driver) = $this->getarguments("db", \func_get_args());
 		$this->db = $driver;
 		if(\method_exists($this->db, "connect")) { $this->db->connect(); }
+		if(\method_exists($this->db, "jsql")) { $this->jsql = $this->db->jsql(); }
 		return $this;
 	}
 
 	public function query() {
-		list($sJSQL) = $this->getarguments("jsql", \func_get_args());
+		list($sJSQL) = $this->getarguments("jsqlq", \func_get_args());
 		$sSQL = $this->AlvinSQL($sJSQL);
 		$this->attribute("query", $sSQL);
-		if($this->argument("debug")) { echo self::call()->dump($sSQL); }
+		if($this->debug) { echo self::call()->dump($sSQL); }
 		$this->query = $this->db->query($sSQL);
 		return $this->query;
 	}
@@ -596,10 +598,10 @@ SQL;
 			return $this;
 		}
 
-		$sSQL = $this->JsqlParser('{
+		$sSQL = $this->jsql->query('{
 			"columns":["name","columns","foreignkey","relationship","validate_insert","validate_update"],
 			"tables":["__ngl_owl_structure__"],
-			"where":[["name","eq","('.$sObjectName.')"]]
+			"where":[["[name]","eq","'.$sObjectName.'"]]
 		}');
 
 		$this->attribute("query", $sSQL);
@@ -613,9 +615,9 @@ SQL;
 		$aObject					= $table->get();
 		$vObject					= [];
 		$vObject["name"]			= $aObject["name"];
-		$vObject["columns"]			= ($aObject["columns"]) ? self::call("jsql")->decode($aObject["columns"]) : [];
-		$vObject["foreignkey"]		= ($aObject["foreignkey"]) ? self::call("jsql")->decode($aObject["foreignkey"]) : [];
-		$vObject["relationship"]	= ($aObject["relationship"]) ? self::call("jsql")->decode($aObject["relationship"]) : [];
+		$vObject["columns"]			= ($aObject["columns"]) ? $this->jsql->decode($aObject["columns"]) : [];
+		$vObject["foreignkey"]		= ($aObject["foreignkey"]) ? $this->jsql->decode($aObject["foreignkey"]) : [];
+		$vObject["relationship"]	= ($aObject["relationship"]) ? $this->jsql->decode($aObject["relationship"]) : [];
 		$vObject["validate_insert"] = $aObject["validate_insert"];
 		$vObject["validate_update"] = $aObject["validate_update"];
 		$table->destroy();
@@ -637,10 +639,10 @@ SQL;
 			// parent
 			// if(isset($vObject["relationship"]["parent"]) && !empty($vObject["relationship"]["parent"])) {
 			if(!empty($vObject["relationship"]["parent"])) {
-				$sSQL = $this->JsqlParser('{
+				$sSQL = $this->jsql->query('{
 					"columns":["columns","relationship"],
 					"tables":["__ngl_owl_structure__"],
-					"where":[["name","eq","('.$vObject["relationship"]["parent"].')"]]
+					"where":[["[name]","eq","'.$vObject["relationship"]["parent"].'"]]
 				}');
 		
 				$this->attribute("query", $sSQL);
@@ -653,17 +655,17 @@ SQL;
 					$aTable["type"]				= "parent";
 					$aTable["join"]				= $vObject["name"];
 					$aTable["using"]			= "pid";
-					$aTable["columns"]			= self::call("jsql")->decode($parent->get("columns"));
+					$aTable["columns"]			= $this->jsql->decode($parent->get("columns"));
 					$aTables[$aTable["alias"]]	= $aTable;
 
-					$aParentJoins = self::call("jsql")->decode($parent->reset()->get("relationship"));
+					$aParentJoins = $this->jsql->decode($parent->reset()->get("relationship"));
 					if(isset($aParentJoins["joins"]) && \count($aParentJoins["joins"])) {
 						$aParentJoins = $aParentJoins["joins"];
 						foreach($aParentJoins as $aPJoin) {
-							$sSQL = $this->JsqlParser('{
+							$sSQL = $this->jsql->query('{
 								"columns":["columns"],
 								"tables":["__ngl_owl_structure__"],
-								"where":[["name","eq","('.$aPJoin["name"].')"]]
+								"where":[["[name]","eq","'.$aPJoin["name"].'"]]
 							}');
 					
 							$this->attribute("query", $sSQL);
@@ -676,7 +678,7 @@ SQL;
 							$aTable["type"]				= "join";
 							$aTable["join"]				= "__parent";
 							$aTable["using"]			= $aPJoin["using"];
-							$aTable["columns"]			= self::call("jsql")->decode($parentjoin->get("columns"));
+							$aTable["columns"]			= $this->jsql->decode($parentjoin->get("columns"));
 							$aTables[$aTable["alias"]]	= $aTable;
 						}
 					}
@@ -701,13 +703,13 @@ SQL;
 		$this->sObject = $sObjectName;
 		$this->vObjects[$sObjectName] = $vObject;
 
-		// print_r($vObject["tables"]);
+		// print_r($vObject["tables"]); exit();
 		return $this;
 	}
 
 	public function showtables() {
 		$aTables = [];
-		$sSQL = $this->JsqlParser('{"columns":["name","columns","foreignkey","relationship","validate_insert","validate_update"], "tables":["__ngl_owl_structure__"], "order":["name"]}');
+		$sSQL = $this->jsql->query('{"columns":["name","columns","foreignkey","relationship","validate_insert","validate_update"], "tables":["__ngl_owl_structure__"], "order":["name"]}');
 		$this->attribute("query", $sSQL);
 		$tables = $this->db->query($sSQL);
 
@@ -716,7 +718,7 @@ SQL;
 			foreach($aTables as $nKey => $aTable) {
 				foreach($aTable as $sField => $mValue) {
 					if($sField=="columns") {
-						$aTables[$nKey][$sField] = self::call("jsql")->decode($mValue);
+						$aTables[$nKey][$sField] = $this->jsql->decode($mValue);
 					} else if($sField=="foreignkey" || $sField=="relationship" || $sField=="validate_insert" || $sField=="validate_update") {
 						$aTables[$nKey][$sField] = (empty($mValue)) ? "NO" : "YES";
 					}
@@ -792,14 +794,12 @@ SQL;
 				$aColumn = (\is_array($mColumn)) ? $mColumn : [$mColumn];
 				$aTable = \explode(".", $aColumn[0]);
 				$aSelected[$aTable[0]] = true;
-				// $sAlias = ((isset($aColumn[1])) ? $aColumn[1] : $aTable[1]);
 				$sAlias = ((isset($aColumn[1])) ? $aColumn[1] : str_replace(".", "_", $aColumn[0]));
-				$aSelect[$sAlias] = '["'.$aTable[0].'.'.$aTable[1].'","'.$sAlias.'"]';
-				$aSelect[$sAlias] = '["'.$aTable[0].'.'.$aTable[1].'","'.$sAlias.'"]';
+				$aSelect[$sAlias] = '["['.$aTable[0].'].['.$aTable[1].']","'.$sAlias.'"]';
 			}
 		}
 
-		$nJoinLevel = $this->argument("join_level");
+		$nJoinLevel = $this->join_level;
 		if(\is_array($mJoins)) {
 			$aJoins = $mJoins;
 		} else if(!empty($mJoins) && \is_string($mJoins) && $mJoins[0]==":") {
@@ -820,9 +820,6 @@ SQL;
 		while(\count($vTables)) {
 			if($nLoopingOut++>$nTables) {
 				echo "Error looping in view method\n";
-				// print_r($vTables);
-				// print_r($aUsed);
-				// print_r($aUnUsed);
 				exit();
 			}
 
@@ -864,10 +861,10 @@ SQL;
 						"'.$vTable["name"].'",
 						"'.$sTable.'", 
 						[
-							["'.$sTable.'.pid","eq","'.$vTable["join"].'.'.$vTable["using"].'"]
+							["['.$sTable.'.pid]","eq","['.$vTable["join"].'.'.$vTable["using"].']"]
 					';
 					
-					if(!$bDeleted && in_array("state", $vTables[$sTable]["columns"])) { $sFrom .= ',"AND",["'.$sTable.'.state","isnot","(NULL)"]'; }
+					if(!$bDeleted && in_array("state", $vTables[$sTable]["columns"])) { $sFrom .= ',"AND",["['.$sTable.'.state]","isnot","NULL"]'; }
 					$sFrom .= ']]';
 					$aFrom[] = $sFrom;
 				} else {
@@ -880,7 +877,7 @@ SQL;
 					"'.$vTable["name"].'",
 					"'.$sTable.'",
 					[
-						["'.$sTable.'.id","eq","'.$this->sObject.'.pid"]
+						["['.$sTable.'.id]","eq","['.$this->sObject.'.pid]"]
 					]
 				]';
 			} else if(($mJoins===true || \in_array($sTable, $aJoins)) && !empty($vTable["join"]) && $vTable["type"]=="join") {
@@ -900,10 +897,10 @@ SQL;
 					"'.$vTable["name"].'",
 					"'.$sTable.'",
 					[
-						["'.$sTable.'.'.$sJoinField.'","eq","'.$vTable["join"].'.'.$vTable["using"].'"]
+						["['.$sTable.'.'.$sJoinField.']","eq","['.$vTable["join"].'.'.$vTable["using"].']"]
 				';
 
-				if(!$bDeleted && \in_array("state", $vTables[$sTable]["columns"])) { $sFrom .= ',"AND",["'.$sTable.'.state","isnot","(NULL)"]'; }
+				if(!$bDeleted && \in_array("state", $vTables[$sTable]["columns"])) { $sFrom .= ',"AND",["['.$sTable.'.state]","isnot","NULL"]'; }
 				$sFrom .= ']]';
 				$aFrom[] = $sFrom;
 			} else {
@@ -962,11 +959,9 @@ SQL;
 		}
 
 		if($this->bViewFields) { return $aSelect; }
-
 		$sView = '{"columns" : ['.\implode(',', $aSelect).'], "tables" : ['.\implode(', ', $aFrom).']}';
-		$sEOL = $this->argument("view_eol");
 
-		return (\strtolower($sOutputMode)=="jsql") ? $sView : $this->JsqlParser($sView, $sEOL);
+		return (\strtolower($sOutputMode)=="jsql") ? $sView : $this->jsql->query($sView, $this->view_eol);
 	}
 
 	public function viewFields() {
@@ -1029,7 +1024,7 @@ SQL;
 					continue;
 				}
 				
-				$aSelect[$sColumnAlias] = '["'.$sTable.'.'.$sField.'","'.$sColumnAlias.'"]';
+				$aSelect[$sColumnAlias] = '"'.$sTable.'.'.$sField.'","'.$sColumnAlias.'"';
 			}
 
 			if($vTable["type"]=="main") {
@@ -1037,9 +1032,9 @@ SQL;
 			} else if($vTable["type"]=="related" && $bJoins) {
 				$sJoinField = (isset($vTable["field"])) ? $vTable["field"] : "id";
 				if(!$bDeleted) {
-					$aFrom[] = '["'.$vTable["name"].'","'.$sTable.'", [["'.$sTable.'.'.$sJoinField.'","eq","'.$vTable["join"].'.'.$vTable["using"].'"],"AND",["'.$sTable.'.state","isnot","(NULL)"]]]';
+					$aFrom[] = '["'.$vTable["name"].'","'.$sTable.'", [["['.$sTable.'.'.$sJoinField.']","eq","['.$vTable["join"].'.'.$vTable["using"].']"],"AND",["['.$sTable.'.state]","isnot","NULL"]]]';
 				} else {
-					$aFrom[] = '["'.$vTable["name"].'","'.$sTable.'", [["'.$sTable.'.'.$sJoinField.'","eq","'.$vTable["join"].'.'.$vTable["using"].'"]]]';
+					$aFrom[] = '["'.$vTable["name"].'","'.$sTable.'", [["['.$sTable.'.'.$sJoinField.']","eq","['.$vTable["join"].'.'.$vTable["using"].']"]]]';
 				}
 			}
 		}
@@ -1049,12 +1044,11 @@ SQL;
 		}
 
 		$sView = '{"columns" : ['.\implode(', ', $aSelect).'], "tables" : ['.\implode(', ', $aFrom).']}';
-		$sEOL = $this->argument("view_eol");
-		return (strtolower($sOutputMode)=="jsql") ? $sView : $this->JsqlParser($sView, $sEOL);
+		return (strtolower($sOutputMode)=="jsql") ? $sView : $this->jsql->query($sView, $this->view_eol);
 	}
 
 	final private function AlvinInit() {
-		if(NGL_ALVIN===null || !$this->argument("alvin")) { return false; }
+		if(NGL_ALVIN===null || !$this->alvin) { return false; }
 		if(!self::call("alvin")->loaded()) { return (self::call("alvin")->autoload()===false) ? false : true; }
 		return true;
 	}
@@ -1071,25 +1065,25 @@ SQL;
 				$sHash = self::call()->unique(16);
 				$sHashNot = self::call()->unique(16);
 				if(!$bOnlyWhere) {
-					$aJSQL = self::call("jsql")->decode($sJSQL);
+					$aJSQL = $this->jsql->decode($sJSQL);
 					if(isset($aJSQL["where"])) {
-						$aJSQL["where"] = [$aJSQL["where"], "AND", [[$sTableName.".imya", "in", $sHash], "OR", [$sTableName.".imya", "notin", $sHashNot]]];
+						$aJSQL["where"] = [$aJSQL["where"], "AND", [["[".$sTableName.".imya]", "in", $sHash], "OR", ["[".$sTableName.".imya]", "notin", $sHashNot]]];
 					} else {
-						$aJSQL["where"] = [[$sTableName.".imya", "in", $sHash], "OR", [$sTableName.".imya", "notin", $sHashNot]];
+						$aJSQL["where"] = [["[".$sTableName.".imya]", "in", $sHash], "OR", ["[".$sTableName.".imya]", "notin", $sHashNot]];
 					}
-					$sSQL = $this->JsqlParser($aJSQL);
+					$sSQL = $this->jsql->query($aJSQL);
 				} else {
 					$sSQL = "((".$sJSQL." IN (".$sHash.")) OR (".$sJSQL." NOT IN (".$sHashNot.")))";
 				}
 				
 				// consulta final
 				$sSQL = \str_replace($sHash, "SELECT imya FROM __ngl_owl_index__ WHERE (role IS NULL OR role = '".$sRole."' ".$sRoles.")", $sSQL);
-				$sSQL = \str_replace($sHashNot, "SELECT imya FROM __ngl_owl_index__ WHERE 1", $sSQL);
+				$sSQL = \str_replace($sHashNot, "SELECT imya FROM __ngl_owl_index__ WHERE 1=1", $sSQL);
 			} else {
-				$sSQL = (!$bOnlyWhere) ? $this->JsqlParser($sJSQL) : "";
+				$sSQL = (!$bOnlyWhere) ? $this->jsql->query($sJSQL) : "";
 			}
 		} else {
-			$sSQL = (!$bOnlyWhere) ? $this->JsqlParser($sJSQL) : "";
+			$sSQL = (!$bOnlyWhere) ? $this->jsql->query($sJSQL) : "";
 		}
 
 		return $sSQL;
@@ -1104,7 +1098,7 @@ SQL;
 		if(isset($this->vObjects[$sTable])) {
 			$vForeignKey = $this->vObjects[$this->sObject]["foreignkey"];
 		} else {
-			$sSQL = $this->JsqlParser('{"columns":["foreignkey"], "tables":["__ngl_owl_structure__"], "where":[["name","eq","('.$sTable.')"]]}');
+			$sSQL = $this->jsql->query('{"columns":["foreignkey"], "tables":["__ngl_owl_structure__"], "where":[["[name]","eq","'.$sTable.'"]]}');
 			$this->attribute("query", $sSQL);
 			$foreignkey = $this->db->query($sSQL);
 			
@@ -1112,7 +1106,7 @@ SQL;
 			$foreignkey->destroy();
 			$foreignkey = null;
 			
-			$vForeignKey = self::call("jsql")->decode($sForeignKey);
+			$vForeignKey = $this->jsql->decode($sForeignKey);
 		}
 
 		$vCrossRows = [];
@@ -1127,9 +1121,9 @@ SQL;
 				foreach($aFields as $nKey => $sField) {
 					$sIndex = \md5($sTable.$vForeignKey["fields"][$nKey].$sCrossTable.$sField);
 					$aConditions["where"][$sIndex] = '
-						["'.$sTable.'.'.$vForeignKey["fields"][$nKey].'","eq","'.$sCrossTable.'.'.$sField.'"],
+						["['.$sTable.'.'.$vForeignKey["fields"][$nKey].']","eq","['.$sCrossTable.'.'.$sField.']"],
 						"AND",
-						["'.$sCrossTable.'.state","isnot","(NULL)"]
+						["['.$sCrossTable.'.state]","isnot","NULL"]
 					';
 				}
 
@@ -1138,7 +1132,7 @@ SQL;
 
 				// query
 				$sSQL = $this->AlvinSQL('{
-					"type":"select",
+					"query":"select",
 					"columns":["'.$sCrossTable.'.id"],
 					"tables":["'.\implode('","', $aConditions["from"]).'"],
 					"where":['.\implode(',"AND",', $aConditions["where"]).']
@@ -1153,7 +1147,7 @@ SQL;
 					$sRows	= \implode(",", $aRows);
 					if($nRows) {
 						$sSQLUpdate = '{
-							"type":"update",
+							"query":"update",
 							"columns":[["'.$sCrossTable.'.state","eq","(NULL)"]],
 							"tables":["'.\implode('","', $aConditions["from"]).'"],
 							"where":['.\implode(',"AND",', $aConditions["where"]).']
@@ -1211,13 +1205,13 @@ SQL;
 		}
 
 		if(self::call()->isInteger($mID)) {
-			$sJSQL = $this->JsqlParser('{
+			$sJSQL = $this->jsql->query('{
 				"columns":["id"], 
 				"tables":["'.$sTableName.'"], 
 				"where":[
-					["'.$sTableName.'.id","eq","('.$mID.')"],
+					["['.$sTableName.'.id]","eq","'.$mID.'"],
 					"AND",
-					["'.$sTableName.'.state","isnot","(NULL)"]
+					["['.$sTableName.'.state]","isnot","NULL"]
 				]
 			}');
 			$this->attribute("query", $sJSQL);
@@ -1233,10 +1227,10 @@ SQL;
 
 		if(\is_array($mID)) {
 			$aWhere = $this->db->escape($mID);
-			$sJSQL = $this->JsqlParser('{
+			$sJSQL = $this->jsql->query('{
 				"columns":["id"],
 				"tables":["'.$sTableName.'"],
-				"where":[["'.$sTableName.'.'.$aWhere[0].'","'.$aWhere[1].'","('.$aWhere[2].')"]]
+				"where":[["['.$sTableName.'.'.$aWhere[0].']","'.$aWhere[1].'","'.$aWhere[2].'"]]
 			}');
 	
 			$this->attribute("query", $sJSQL);
@@ -1251,10 +1245,10 @@ SQL;
 		}
 
 		$sImya = self::call()->imya($mID);
-		$sJSQL = $this->JsqlParser('{
+		$sJSQL = $this->jsql->query('{
 			"columns":["id"],
 			"tables":["'.$sTableName.'"],
-			"where":[["'.$sTableName.'.imya","eq","('.$sImya.')"]]
+			"where":[["['.$sTableName.'.imya]","eq","'.$sImya.'"]]
 		}');
 
 		$this->attribute("query", $sJSQL);
@@ -1277,7 +1271,7 @@ SQL;
 			$aWhere[] = '["name","eq","('.$sTbName.')"]';
 		}
 		$sWhere = \implode(',"OR",', $aWhere);
-		$sSQL = $this->JsqlParser('{"tables":["__ngl_owl_structure__"], "where":['.$sWhere.']}');
+		$sSQL = $this->jsql->query('{"tables":["__ngl_owl_structure__"], "where":['.$sWhere.']}');
 		$relationship = $this->db->query($sSQL);
 		$vRelationship = $relationship->getall("#name");
 		$relationship->destroy();
@@ -1297,10 +1291,10 @@ SQL;
 			$sObjectName = $mObject;
 			if(!$sAlias) { $sAlias = $sObjectName; }
 
-			$sSQL = $this->JsqlParser('{
+			$sSQL = $this->jsql->query('{
 				"columns":["name","columns","relationship"], 
 				"tables":["__ngl_owl_structure__"], 
-				"where":[["name","eq","('.$mObject.')"]]
+				"where":[["[name]","eq","'.$mObject.'"]]
 			}');
 
 			$relations = $this->db->query($sSQL);
@@ -1308,8 +1302,8 @@ SQL;
 				$aGetRelations = $relations->get();
 				$relations->destroy();
 				$relations = null;
-				$aColumns = ($aGetRelations["columns"]) ? self::call("jsql")->decode($aGetRelations["columns"]) : [];
-				$aRelations = ($aGetRelations["relationship"]) ? self::call("jsql")->decode($aGetRelations["relationship"]) : [];
+				$aColumns = ($aGetRelations["columns"]) ? $this->jsql->decode($aGetRelations["columns"]) : [];
+				$aRelations = ($aGetRelations["relationship"]) ? $this->jsql->decode($aGetRelations["relationship"]) : [];
 
 				if(!isset($aRelations["joins"])) { $aRelations["joins"] = []; }
 				if(!isset($aRelations["children"])) { $aRelations["children"] = []; }
@@ -1324,7 +1318,7 @@ SQL;
 		$aTables[$sAlias]["columns"] = $aColumns;
 		if(\is_array($aRelations)) {
 			$this->nRelationshipsLevel++;
-			if($this->nRelationshipsLevel <= $this->argument("join_level")) {
+			if($this->nRelationshipsLevel <= $this->join_level) {
 				// joins
 				if(isset($aRelations["joins"]) && \count($aRelations["joins"])) {
 					$this->GetRelationshipStructure($aTables, $aParents, $sObjectName, $sAlias, $aRelations["joins"], false);
@@ -1394,7 +1388,7 @@ SQL;
 		}
 	}
 
-	private function Imya($sObject=null) {
+	public function imya($sObject=null) {
 		if($sObject===null) { $sObject = $this->sObject; }
 		$sGroup = \substr(self::call()->strimya($sObject), 0, 12);
 		return $sGroup.self::call()->unique(20);
@@ -1407,24 +1401,13 @@ SQL;
 		return false;
 	}
 
-	private function JsonAppener($sJSQL, $sExtra) {
-		$aJSQL = self::call("jsql")->decode($sJSQL);
-		$aExtra = self::call("jsql")->decode($sExtra);
-		$aJSQL = self::call()->arrayAppend($aJSQL, $aExtra);
-		return self::call("jsql")->encode($aJSQL);
-	}
-
-	private function JsqlParser($mJSQL, $EOL=null) {
-		return $this->db->jsqlParser($mJSQL, $EOL);
-	}
-
 	private function Logger($sStatus=null, $aDetails=[]) {
 		if($sStatus===null) {
 			$this->attribute("log", []);
 		} else {
 			$this->attribute("log", ["status"=>$sStatus, "details"=>$aDetails]);
 
-			if($this->argument("use_history")) {
+			if($this->use_history) {
 				$aAttrHistory = $this->attribute("history");
 				$aAttrHistory[] = $this->attribute("log");
 				$this->attribute("history", $aAttrHistory);
@@ -1433,7 +1416,7 @@ SQL;
 	}
 
 	private function OwLog($sImya, $sAction, $aChangeLog=null) {
-		if($this->argument("owlog")) {
+		if($this->owlog) {
 			$aLog				= [];
 			$aLog["imya"]		= $sImya;
 			$aLog["user"]		= self::call("sysvar")->UID;
@@ -1488,7 +1471,7 @@ SQL;
 			}
 
 			if(!$this->attribute("current")) { self::errorMessage($this->object, 1002); }
-			$sWhere = '[["'.$sTable.'.id","eq","('.(int)$this->attribute('current').')"],"AND",["'.$sTable.'.state","isnot","(NULL)"]]';
+			$sWhere = '[["['.$sTable.'.id]","eq","'.(int)$this->attribute('current').'"],"AND",["['.$sTable.'.state]","isnot","NULL"]]';
 			$nRowID = $this->attribute("current");
 		} else {
 			// hijos
@@ -1496,13 +1479,13 @@ SQL;
 			if(!$this->attribute("current")) { self::errorMessage($this->object, 1002); }
 			
 			$aWhere = [];
-			$aWhere[] = '["'.$sTable.'.pid","eq","('.$this->attribute('current').')"],"AND",["'.$sTable.'.state","isnot","(NULL)"]';
+			$aWhere[] = '["['.$sTable.'.pid]","eq","'.$this->attribute('current').'"],"AND",["['.$sTable.'.state]","isnot","NULL"]';
 			if(isset($vData["id"])) {
-				$aWhere[] = '"AND",["'.$sTable.'.id","eq","('.(int)$vData["id"].')"]';
+				$aWhere[] = '"AND",["['.$sTable.'.id]","eq","'.(int)$vData["id"].'"]';
 				$nRowID = $vData["id"];
 			} else if(isset($vData["imya"])) {
 				$vData["id"] = $this->GetID($vData["imya"], $sTable);
-				$aWhere[] = '"AND",["'.$sTable.'.id","eq","('.(int)$vData["id"].')"]';
+				$aWhere[] = '"AND",["['.$sTable.'.id]","eq","'.(int)$vData["id"].'"]';
 				$nRowID = $vData["id"];
 			} else {
 				$sSQLChildren = '{"columns":["id"], "tables":["'.$sTable.'"], "where":['.\implode($aWhere).']}';
@@ -1524,7 +1507,7 @@ SQL;
 				$this->aCascade = [];
 
 				if(!empty($vCrossRows)) {
-					if($this->argument("cascade")) {
+					if($this->cascade) {
 						$nRows += $this->DeleteInCascade($vCrossRows["cascade"]);
 					} else {
 						$this->Logger("foreignkeys", $vCrossRows["info"]);
@@ -1536,10 +1519,10 @@ SQL;
 			} else if($nState==2) {
 				// suspencion (state = 0)
 				$vData = ["state"=>0];
-				if(!$this->bChildMode && $this->argument("inherit")) {
+				if(!$this->bChildMode && $this->inherit) {
 					if($sTable==$this->sObject && isset($this->vObjects[$sTable]["children"])) {
 						foreach($this->vObjects[$sTable]["children"] as $sChildTable) {
-							$sChildWhere = $this->JsqlParser('{"type":"where", "where":[["pid","eq","('.$nRowID.')"],"AND",["state","eq","(1)"]]}');
+							$sChildWhere = $this->jsql->query('{"query":"where", "where":[["[pid]","eq","'.$nRowID.'"],"AND",["[state]","eq","1"]]}');
 							$update = $this->db->update($sChildTable, $vData, $sChildWhere);
 						}
 					}
@@ -1547,25 +1530,25 @@ SQL;
 			} else if($nState==3) {
 				// reactivación (state = 1)
 				$vData = ["state"=>1];
-				if(!$this->bChildMode && $this->argument("inherit")) {
+				if(!$this->bChildMode && $this->inherit) {
 					if($sTable==$this->sObject && isset($this->vObjects[$sTable]["children"])) {
 						foreach($this->vObjects[$sTable]["children"] as $sChildTable) {
-							$sChildWhere = $this->JsqlParser('{"type":"where", "where":[["pid","eq","('.$nRowID.')"],"AND",["state","eq","(0)"]]}');
+							$sChildWhere = $this->jsql->query('{"query":"where", "where":[["[pid]","eq","'.$nRowID.'"],"AND",["[state]","eq","0"]]}');
 							$update = $this->db->update($sChildTable, $vData, $sChildWhere);
 						}
 					}
 				}
 			} else if($nState==4) {
 				// toggle: suspencion | reactivación
-				if(!$this->bChildMode && $this->argument("inherit")) {
+				if(!$this->bChildMode && $this->inherit) {
 					if($sTable==$this->sObject && isset($this->vObjects[$sTable]["children"])) {
 						foreach($this->vObjects[$sTable]["children"] as $sChildTable) {
 							$vData = ["state"=>0];
-							$sChildWhere = $this->JsqlParser('{"type":"where", "where":[["pid","eq","('.$nRowID.')"],"AND",["state","eq","(1)"]]}');
+							$sChildWhere = $this->jsql->query('{"query":"where", "where":[["[pid]","eq","'.$nRowID.'"],"AND",["[state]","eq","1"]]}');
 							$update = $this->db->update($sChildTable, $vData, $sChildWhere);
 							if(!$update->rows()) {
 								$vData = ["state"=>1];
-								$sChildWhere = $this->JsqlParser('{"type":"where", "where":[["pid","eq","('.$nRowID.')"],"AND",["state","eq","(0)"]]}');							
+								$sChildWhere = $this->jsql->query('{"query":"where", "where":[["[pid]","eq","'.$nRowID.'"],"AND",["[state]","eq","0"]]}');							
 								$update = $this->db->update($sChildTable, $vData, $sChildWhere);
 							}
 						}
@@ -1585,8 +1568,8 @@ SQL;
 			}
 
 			// escape
-			if($this->argument("escape")) { $vData = $this->db->escape($vData); }
-			$sSQLWhere = $this->JsqlParser('{"type":"where", "where":'.$sWhere.'}');
+			if($this->escape) { $vData = $this->db->escape($vData); }
+			$sSQLWhere = $this->jsql->query('{"query":"where", "where":'.$sWhere.'}');
 			if($nState==4) {
 				$vData = ["state"=>0];
 				$update = $this->db->update($sTable, $vData, $sSQLWhere);
@@ -1595,7 +1578,7 @@ SQL;
 					$update = $this->db->update($sTable, $vData, $sSQLWhere);
 				}
 			} else {
-				if($this->argument("owlog_changelog")) {
+				if($this->owlog_changelog) {
 					$changes = $this->db->query("SELECT * FROM ".$sTable." WHERE ".$sSQLWhere);
 					$aChangeLog = $changes->getall("#id");
 				}

@@ -331,11 +331,8 @@ class nglMail extends nglBranch implements iNglClient {
 		$nPriority		= $this->attribute("mail_priority");
 		$aCC			= $this->attribute("mail_cc");
 		$sSubject		= $this->attribute("mail_subject");
-		$sCharSet 		= $this->argument("charset");
-		$sEncoding 		= (\strtolower($sCharSet)!="us-ascii") ? "8bit" : "7bit";
-		$sTime			= $this->argument("timediff");
-		$sInReplyTo		= $this->argument("inreplyto");
-		$sTime			= \strtotime($sTime);
+		$sEncoding 		= (\strtolower($this->charset)!="us-ascii") ? "8bit" : "7bit";
+		$sTime			= \strtotime($this->timediff);
 
 		if($sReplyTo===null) { $sReplyTo = $sFrom; }
 		
@@ -348,11 +345,11 @@ class nglMail extends nglBranch implements iNglClient {
 		$sHeaders	.= "Cc: ".\implode(",", $aCC).$this->sCRLF;
 
 		// respuesta a un mail
-		if(!empty($sInReplyTo)) {
-			$sReferences = $this->argument("references");
-			$sReferences = empty($sReferences) ? $sInReplyTo : $sReferences." ".$sInReplyTo;
+		if(!empty($this->inreplyto)) {
+			$sReferences = $this->references;
+			$sReferences = empty($sReferences) ? $this->inreplyto : $sReferences." ".$this->inreplyto;
 			$sHeaders	.= "References: ".$sReferences.$this->sCRLF;
-			$sHeaders	.= "In-Reply-To: ".$sInReplyTo.$this->sCRLF;
+			$sHeaders	.= "In-Reply-To: ".$this->inreplyto.$this->sCRLF;
 			if(\substr($sSubject,0,4)!="Re: ") { $sSubject = "Re: ".$sSubject; }
 		}
 
@@ -385,7 +382,7 @@ class nglMail extends nglBranch implements iNglClient {
 		$sBody	.= "Content-Type: multipart/alternative; boundary=\"".$this->sBoundary."ALT\"".$this->sCRLF.$this->sCRLF;
 
 		$sBody	.= "--".$this->sBoundary."ALT".$this->sCRLF;
-		$sBody	.= "Content-Type: text/plain; charset=".$sCharSet.$this->sCRLF;
+		$sBody	.= "Content-Type: text/plain; charset=".$this->charset.$this->sCRLF;
 		$sBody	.= "Content-Transfer-Encoding: ".$sEncoding.$this->sCRLF.$this->sCRLF;
 		$sBody	.= $sTextMessage;
 		$sBody	.= $this->sCRLF;
@@ -393,7 +390,7 @@ class nglMail extends nglBranch implements iNglClient {
 		// mensaje HTML
 		if($sHTMLMessage!==null) {
 			$sBody	.= $this->sCRLF."--".$this->sBoundary."ALT".$this->sCRLF;
-			$sBody	.= "Content-Type: text/html; charset=".$sCharSet.$this->sCRLF;
+			$sBody	.= "Content-Type: text/html; charset=".$this->charset.$this->sCRLF;
 			$sBody	.= "Content-Transfer-Encoding: ".$sEncoding.$this->sCRLF.$this->sCRLF;
 			$sBody	.= $sHTMLMessage;
 			$sBody	.= $this->sCRLF;
@@ -516,7 +513,7 @@ class nglMail extends nglBranch implements iNglClient {
 					$aMessages[$nId] = \trim(\substr($sMessage, 0, (int)$nLength));
 				}
 
-				if($this->argument("peek")) { $this->unflag($sMailsId, "seen"); }
+				if($this->peek) { $this->unflag($sMailsId, "seen"); }
 				return $aMessages;
 			} else {
 				$vResponse = $this->request("RETR ".$sMailsId);
@@ -683,7 +680,7 @@ class nglMail extends nglBranch implements iNglClient {
 								break;
 							case (isset($vFragment["Content-Type"]) && !isset($vFragment["boundary"]) && \strpos($vFragment["Content-Type"], "boundary")==false):
 								$aMail["hasattachments"] = true;
-								if($this->argument("attachs_ignore")) { break; }
+								if($this->attachs_ignore) { break; }
 								$aMimeType = self::call()->parseHeaderProperty($vFragment["Content-Type"]);
 								$vFragment["mimetype"] = \current($aMimeType);
 
@@ -785,7 +782,7 @@ class nglMail extends nglBranch implements iNglClient {
 		}
 
 		// mas nuevos primero
-		if($this->argument("revert")) { $aResult = \array_reverse($aResult); }
+		if($this->revert) { $aResult = \array_reverse($aResult); }
 		$aGet = \array_slice($aResult, 0, $nLimit);
 		if($sGetMode=="headers") {
 			$aResponse = $this->headers($aGet);
@@ -1189,7 +1186,6 @@ class nglMail extends nglBranch implements iNglClient {
 			$this->BuildMail();
 			$sMessage = $this->attribute("mail_body");
 			$sHeaders = $this->attribute("mail_headers");
-			$sSubject = $this->argument("mail_subject");
 
 			foreach($aSendTo["details"] as $aTo) {
 				$sTo = $aTo[2];
@@ -1199,7 +1195,7 @@ class nglMail extends nglBranch implements iNglClient {
 				if($this->sServerType=="smtp") {
 					$aSent[$sMsgId] = $this->SMTPMail($sTo, $sMessage, $sHeader);
 				} else if($this->sServerType=="php") {
-					$aSent[$sMsgId] = \mail($sTo, $sSubject, $sMessage, $sHeader);
+					$aSent[$sMsgId] = \mail($sTo, $this->mail_subject, $sMessage, $sHeader);
 				}
 			}
 		}
@@ -1209,8 +1205,8 @@ class nglMail extends nglBranch implements iNglClient {
 	
 	private function SMTPMail($sTo, $sMessage, $sHeaders) {
 		// smtp
-		$sAuthType	= $this->argument("smtp_authtype");
-		$sSecure 	= $this->argument("secure");
+		$sAuthType	= $this->smtp_authtype;
+		$sSecure 	= \strtolower($this->secure);
 		$sLocalhost = "localhost";
 
 		$aCC = $this->attribute("mail_cc");
@@ -1229,9 +1225,9 @@ class nglMail extends nglBranch implements iNglClient {
 			$vHELO = $this->HELO($vResponse["text"]);
 
 			// tls
-			if(isset($vHELO["STARTTLS"]) && \strtolower($sSecure)=="tls") {
+			if(isset($vHELO["STARTTLS"]) && $sSecure=="tls") {
 				$vResponse = $this->request("STARTTLS");
-				@\stream_socket_enable_crypto($this->socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+				@\stream_socket_enable_crypto($this->socket, true, STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT);
 				$this->request("EHLO ".$sLocalhost);
 			}
 

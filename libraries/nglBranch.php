@@ -53,7 +53,8 @@ abstract class nglBranch extends nglTrunk {
 		}
 
 		if(isset($this->aArguments[$sProperty])) {
-			return eval("return ".$this->aArguments[$sProperty].";");
+			return $this->aArguments[$sProperty];
+			// return eval("return ".$this->aArguments[$sProperty].";");
 		}
 
 		return $this;
@@ -87,7 +88,7 @@ abstract class nglBranch extends nglTrunk {
 				return $this->aAttributes[$sProperty];
 			} else {
 				// argumentos
-				return (isset($this->aArguments[$sProperty])) ? $this->aArguments[$sProperty] : "";
+				return (\array_key_exists($sProperty, $this->aArguments)) ? $this->aArguments[$sProperty] : "";
 			}
 		}
 		
@@ -115,7 +116,6 @@ abstract class nglBranch extends nglTrunk {
 				return $this->aArguments[$sProperty];
 			}
 		}
-		
 		return null;
 	}
 
@@ -182,7 +182,6 @@ abstract class nglBranch extends nglTrunk {
 			if(!empty($mArguments) && $mArguments[0]=="{") {
 				$mArguments = self::call("fn")->isJSON($mArguments, "array");
 				if(\is_array($mArguments)) { return $this->__arguments__($mArguments); }
-
 				return $this;
 			}
 			return $this->__arguments__($mArguments, $mValue);
@@ -247,7 +246,7 @@ abstract class nglBranch extends nglTrunk {
 		} else {
 			$vConfig = $this->CONFIG;
 		}
-		
+
 		if(isset($vConfig["arguments"])) { $this->args($vConfig["arguments"]); }
 		if(isset($vConfig["errors"])) { self::errorSetCodes($this->object, $vConfig["errors"]); }
 		
@@ -392,11 +391,11 @@ abstract class nglBranch extends nglTrunk {
 		foreach($aArgumentsSettings as $sProperty => $mArgument) {
 			$sProperty = \strtolower($sProperty);
 			if(\is_array($mArgument)) {
-				if(isset($mArgument[1])) {
+				if(\count($mArgument)>1) {
 					$aArguments[$sProperty] = $mArgument[1];
 				}
 			} else {
-				if($mAttribute!==null) {
+				if($mArgument!==null) {
 					$aArguments[$sProperty] = $mArgument;
 				}
 			}

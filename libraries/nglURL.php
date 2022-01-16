@@ -190,7 +190,7 @@ class nglURL extends nglBranch {
 	} **/
 	public function unparse() {
 		if($this->attribute("host")===null) {
-			if($this->argument("url")!==null) {
+			if($this->url!==null) {
 				$this->parse();
 			} else {
 				return false;
@@ -270,7 +270,7 @@ class nglURL extends nglBranch {
 
 		if(!$this->isAttribute($sPart)) { return false; }
 
-		if($this->attribute("host")===null && $this->argument("url")!==null) {
+		if($this->attribute("host")===null && $this->url!==null) {
 			$this->parse();
 		}
 

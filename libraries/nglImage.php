@@ -732,8 +732,7 @@ class nglImage extends nglBranch implements inglBranch {
 		$nWidth	= $this->attribute("imagewidth");
 		$nHeight = $this->attribute("imageheight");
 		$sPosition = "center center";
-		$bAlpha = $this->argument("alpha");
-		$this->CreateCopy($nWidth, $nHeight, ($nWidth+$nMargin*2), ($nHeight+$nMargin*2), $bAlpha, $sPosition, $sCanvasColor);
+		$this->CreateCopy($nWidth, $nHeight, ($nWidth+$nMargin*2), ($nHeight+$nMargin*2), $this->alpha, $sPosition, $sCanvasColor);
 		
 		return $this;
 	}
@@ -763,8 +762,7 @@ class nglImage extends nglBranch implements inglBranch {
 		$nWidth	= $this->attribute("imagewidth");
 		$nHeight = $this->attribute("imageheight");
 		$sPosition = "center center";
-		$bAlpha = $this->argument("alpha");
-		$this->CreateCopy(($nWidth-$nPadding*2), ($nHeight-$nPadding*2), $nWidth, $nHeight, $bAlpha, $sPosition, $sCanvasColor);
+		$this->CreateCopy(($nWidth-$nPadding*2), ($nHeight-$nPadding*2), $nWidth, $nHeight, $this->alpha, $sPosition, $sCanvasColor);
 		
 		return $this;
 	}

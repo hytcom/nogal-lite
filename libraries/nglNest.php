@@ -18,6 +18,7 @@ namespace nogal;
 class nglNest extends nglBranch {
 
 	private $owl;
+	private $jsql;
 	private $aTypes;
 	private $aFields;
 	private $aPresets;
@@ -41,7 +42,7 @@ class nglNest extends nglBranch {
 		$vArguments["after"]				= ['$mValue', true];
 		$vArguments["comment"]				= ['$mValue'];
 		$vArguments["core"]					= ['self::call()->istrue($mValue)', false];
-		$vArguments["db"]					= ['$mValue', null];
+		$vArguments["db"]					= ['$this->SetBase($mValue)', null];
 		$vArguments["der"]					= ['self::call()->istrue($mValue)', false];
 		$vArguments["structure"]			= ['$mValue', null];
 		$vArguments["newname"]				= ['$mValue', null];
@@ -94,15 +95,15 @@ class nglNest extends nglBranch {
 
 		// fields
 		$aFields = [
-			"varchar" => ["alias"=>"varchar", "type"=>"VARCHAR", "length"=>"255", "default"=>"NULL", "attrs"=>"--", "index"=>"--", "null"=>true],
-			"text" => ["alias"=>"text", "type"=>"TEXT", "length"=>"", "default"=>"NULL", "attrs"=>"--", "index"=>"--", "null"=>true],
-			"date" => ["alias"=>"date","type"=>"DATE","length"=>"","default"=>"NULL","attrs"=>"--","index"=>"--","null"=>true],
-			"datetime" => ["alias"=>"datetime","type"=>"DATETIME","length"=>"","default"=>"NULL","attrs"=>"--","index"=>"--","null"=>true],
-			"time" => ["alias"=>"time","type"=>"TIME","length"=>"","default"=>"NULL","attrs"=>"--","index"=>"--","null"=>true],
-			"timestamp" => ["alias"=>"timestamp","type"=>"TIMESTAMP","length"=>"","default"=>"NULL","attrs"=>"--","index"=>"--","null"=>true],
-			"int" => ["alias"=>"int","type"=>"INT","length"=>"","default"=>"NULL","attrs"=>"UNSIGNED","index"=>"--","null"=>true],
+			"varchar" => ["alias"=>"varchar", "type"=>"VARCHAR", "length"=>"255", "default"=>"NULL", "attrs"=>"", "index"=>"", "null"=>true],
+			"text" => ["alias"=>"text", "type"=>"TEXT", "length"=>"", "default"=>"NULL", "attrs"=>"", "index"=>"", "null"=>true],
+			"date" => ["alias"=>"date","type"=>"DATE","length"=>"","default"=>"NULL","attrs"=>"","index"=>"","null"=>true],
+			"datetime" => ["alias"=>"datetime","type"=>"DATETIME","length"=>"","default"=>"NULL","attrs"=>"","index"=>"","null"=>true],
+			"time" => ["alias"=>"time","type"=>"TIME","length"=>"","default"=>"NULL","attrs"=>"","index"=>"","null"=>true],
+			"timestamp" => ["alias"=>"timestamp","type"=>"TIMESTAMP","length"=>"","default"=>"NULL","attrs"=>"","index"=>"","null"=>true],
+			"int" => ["alias"=>"int","type"=>"INT","length"=>"","default"=>"NULL","attrs"=>"UNSIGNED","index"=>"","null"=>true],
 			"code" => ["alias"=>"code", "type"=>"VARCHAR", "length"=>"32", "default"=>"NULL", "index"=>"UNIQUE", "null"=>true],
-			"name" => ["alias"=>"name", "type"=>"VARCHAR", "length"=>"64", "default"=>"NONE", "attrs"=>"--", "index"=>"--", "null"=>false]
+			"name" => ["alias"=>"name", "type"=>"VARCHAR", "length"=>"64", "default"=>"NONE", "attrs"=>"", "index"=>"", "null"=>false]
 		];
 
 		// presets
@@ -133,9 +134,10 @@ class nglNest extends nglBranch {
 	final public function __init__() {
 	}
 
-	protected function SetNestData($sNestFile) {
+	protected function SetNestData($sNestFile=null) {
 		$sNestFile = self::call()->clearPath($sNestFile);
 		$sNestFile = self::call()->sandboxPath($sNestFile);
+		if(!\file_exists($sNestFile)) { $sNestFile = NGL_PATH_DATA."/nest.json"; }
 		if(\file_exists($sNestFile)) {
 			$sJsonNest = \file_get_contents($sNestFile);
 			$aJsonNest = \json_decode($sJsonNest, true);
@@ -178,9 +180,9 @@ class nglNest extends nglBranch {
 
 			$aOldType = $this->owl["def"][$sObject][$sOldField];
 			$mType["oldname"] = $sOldField;
-			$mType["oldindex"] = $aOldType["index"];
+			$mType["oldindex"] = !empty($aOldType["index"]) ? $aOldType["index"] : "";
 
-			if(!(isset($mType["type"]) || isset($mType["alias"]))) {
+			if(!(!empty($mType["type"]) || isset($mType["alias"]))) {
 				$mType = \array_merge($aOldType, $mType);
 				if(isset($this->owl["joins"][$sObject])) {
 					foreach($this->owl["joins"][$sObject] as &$sJoinField) {
@@ -191,7 +193,7 @@ class nglNest extends nglBranch {
 				}
 			} else {
 				$this->DefJoins($sObject, $sField);
-				if(isset($mType["type"]) && $mType["type"][0]=="@") { // @tabla OR @tabla-padre cuando es pid
+				if(!empty($mType["type"]) && $mType["type"][0]=="@") { // @tabla OR @tabla-padre cuando es pid
 					$this->DefJoins($sObject, $sField, $mType["type"], $mType["label"]);
 					if(isset($mType["index"])) { $sIndexType = \strtoupper($mType["index"]); }
 					$mType = \array_merge($mType, $this->aFields["fk"]);
@@ -228,21 +230,19 @@ class nglNest extends nglBranch {
 
 		if(\is_array($mType)) {
 			if(!isset($mType["name"])) { $mType["name"] = $sField; }
-			if(\array_key_exists("type", $mType) && $mType["type"][0]=="@") { // @tabla OR @tabla-padre cuando es pid
+			if(!empty($mType["type"]) && $mType["type"][0]=="@") { // @tabla OR @tabla-padre cuando es pid
 				if(!isset($mType["label"])) { $mType["label"] = $mType["name"]; }
 				$this->DefJoins($sObject, $sField, $mType["type"], $mType["label"]);
 				$aType = $this->aFields["fk"];
 			} else {
-				if(\array_key_exists("default", $mType)) {
-					if($mType["default"][0]=="'") { $mType["default"] = \substr($mType["default"], 1, -1); }
-					if(\strtolower($mType["default"])=="now" || \strtolower($mType["default"])=="current_timestamp") {
-						$mType["default"] = "CURRENT_TIMESTAMP";
-					} else if(\strtolower($mType["default"])=="null" || $mType["default"]===null) {
-						$mType["default"] = "NULL";
-						$mType["null"] = true;
-					} else {
-						$mType["default"] = "'".\addslashes($mType["default"])."'";
-					}
+				if(!\array_key_exists("default", $mType)) { $mType["default"] = null; }
+				if(\strtolower($mType["default"])=="now" || \strtolower($mType["default"])=="current_timestamp") {
+					$mType["default"] = "CURRENT_TIMESTAMP()";
+				} else if(\strtolower($mType["default"])=="null" || $mType["default"]===null) {
+					$mType["default"] = "";
+					$mType["null"] = true;
+				} else {
+					$mType["default"] = \addslashes($mType["default"]);
 				}
 
 				if(isset($mType["label"])) { $sLabel = $mType["label"]; }
@@ -267,8 +267,11 @@ class nglNest extends nglBranch {
 
 		if(!isset($aType["label"])) { $aType["label"] = $sLabel; }
 		if(!empty($mType["comment"])) { $aType["comment"] = $mType["comment"]; }
+		if(!empty($aType["attrs"]) && $aType["attrs"]=="--") { $aType["attrs"] = ""; }
+		if(!empty($aType["index"]) && $aType["index"]=="--") { $aType["index"] = ""; }
+		if(!empty($aType["oldindex"]) && $aType["oldindex"]=="--") { $aType["oldindex"] = ""; }
 
-		if($aType["default"]==NGL_NULL && (\strtolower($aType["type"])=="enum" || \strtolower($aType["type"])=="enum")) {
+		if(!empty($aType["default"]) && $aType["default"]==NGL_NULL && (\strtolower($aType["type"])=="enum" || \strtolower($aType["type"])=="enum")) {
 			$aType["default"] = \explode("','", $aType["length"]);
 			$aType["default"] = "'".\substr($aType["default"][0], 1)."'";
 		}
@@ -392,44 +395,44 @@ class nglNest extends nglBranch {
 		if($sAbout=="structure") { return $this->owl["def"][$sObject]; }
 
 		$aFrom = $aRelations = [];
-		$aSelect = ["`".$sObject."`.`id` AS '__id__'", "`".$sObject."`.`imya` AS '__imya__'"];
+		$aSelect = [$sObject.".id AS '__id__'", $sObject.".imya AS '__imya__'"];
 		if(isset($this->owl["parents"][$sObject])) {
 			$sParent = $this->owl["parents"][$sObject];
-			$aRelations[] =  "TABLE `".$sObject."` CHILD OF `".$sParent."` [__parent]";
+			$aRelations[] =  "TABLE ".$sObject." CHILD OF ".$sParent." [__parent]";
 			$aSelect = \array_merge($aSelect, $this->DescribeColumns($sObject, $sObject), $this->DescribeColumns($sParent, $sParent));
 			$aFrom[] = $sObject;
-			$aFrom[] = "LEFT JOIN `".$sParent."` ".$sParent." ON `".$sParent."`.`id` = `".$sObject."`.`pid`";
+			$aFrom[] = "LEFT JOIN ".$sParent." ".$sParent." ON ".$sParent.".id = ".$sObject.".pid";
 			if(isset($this->owl["joins"][$sParent])) {
 				foreach($this->owl["joins"][$sParent] as $sTable) {
 					$aTable = \explode(":", $sTable);
 					$sAlias = $sParent."_".$aTable[1];
-					$aRelations[] = "-- PARENT JOINED TO `".$aTable[1]."` AS '".$sAlias."' [__parent_".$aTable[1]."] USING `".$aTable[0]."` FIELD";
+					$aRelations[] = "-- PARENT JOINED TO ".$aTable[1]." AS '".$sAlias."' [__parent_".$aTable[1]."] USING ".$aTable[0]." FIELD";
 	
 					$aSelect = \array_merge($aSelect, $this->DescribeColumns($aTable[1], $sAlias));
-					$aFrom[] = "LEFT JOIN `".$aTable[1]."` ".$sAlias." ON `".$sAlias."`.`id` = `".$sParent."`.`".$aTable[0]."`";
+					$aFrom[] = "LEFT JOIN ".$aTable[1]." ".$sAlias." ON ".$sAlias.".id = ".$sParent.".".$aTable[0];
 				}
 			}
 		} else {
-			$aRelations[] = "MAIN TABLE `".$sObject."`";
+			$aRelations[] = "MAIN TABLE ".$sObject;
 			$aSelect = $this->DescribeColumns($sObject, $sObject);
 			$aFrom[] = $sObject;
 		}
 
 		if(isset($this->owl["children"][$sObject])) {
 			foreach($this->owl["children"][$sObject] as $sChildren) {
-				$aRelations[] = "-- PARENT OF `".$sChildren."`";
+				$aRelations[] = "-- PARENT OF ".$sChildren;
 
 				$aSelect = \array_merge($aSelect, $this->DescribeColumns($sChildren, $sChildren));
-				$aFrom[] = "LEFT JOIN `".$sChildren."` ON `".$sChildren."`.`pid` = `".$sObject."`.`id`";
+				$aFrom[] = "LEFT JOIN ".$sChildren." ON ".$sChildren.".pid = ".$sObject.".id";
 
 				if(isset($this->owl["joins"][$sChildren])) {
 					foreach($this->owl["joins"][$sChildren] as $sTable) {
 						$aTable = \explode(":", $sTable);
 						$sAlias = $sObject."_".$aTable[1];
-						$aRelations[] = "------ JOINED TO `".$aTable[1]."` AS '".$sAlias."' USING `".$aTable[0]."` FIELD";
+						$aRelations[] = "------ JOINED TO ".$aTable[1]." AS '".$sAlias."' USING ".$aTable[0]." FIELD";
 
 						$aSelect = \array_merge($aSelect, $this->DescribeColumns($aTable[1], $sAlias));
-						$aFrom[] = "LEFT JOIN `".$aTable[1]."` ".$sAlias." ON `".$sAlias."`.`id` = `".$sChildren."`.`".$aTable[0]."`";
+						$aFrom[] = "LEFT JOIN ".$aTable[1]." ".$sAlias." ON ".$sAlias.".id = ".$sChildren.".".$aTable[0];
 					}
 				}
 			}
@@ -439,18 +442,18 @@ class nglNest extends nglBranch {
 			foreach($this->owl["joins"][$sObject] as $sTable) {
 				$aTable = \explode(":", $sTable);
 				$sAlias = $sObject."_".$aTable[1];
-				$aRelations[] = "---- JOINED TO `".$aTable[1]."` AS '".$sAlias."' USING `".$aTable[0]."` FIELD";
+				$aRelations[] = "---- JOINED TO ".$aTable[1]." AS '".$sAlias."' USING ".$aTable[0]." FIELD";
 
 				$aSelect = \array_merge($aSelect, $this->DescribeColumns($aTable[1], $sAlias));
 				$sJoinField = (isset($aTable[2])) ? $aTable[2] : "id";
-				$aFrom[] = "LEFT JOIN `".$aTable[1]."` ".$sAlias." ON `".$sAlias."`.`".$sJoinField."` = `".$sObject."`.`".$aTable[0]."`";
+				$aFrom[] = "LEFT JOIN ".$aTable[1]." ".$sAlias." ON ".$sAlias.".".$sJoinField." = ".$sObject.".".$aTable[0];
 			}
 		}
 
 		$sRelations = \implode("\n", $aRelations);
 		if($sAbout=="relations") { return $sRelations; }
 		
-		$sView = "CREATE OR REPLACE VIEW `view_".$sObject."` AS (\n";
+		$sView = "CREATE VIEW view_".$sObject." AS (\n";
 		$sView .= "\tSELECT\n\t\t".\implode(",\n\t\t", $aSelect)."\n";
 		$sView .= "\tFROM\n\t\t".\implode("\n\t\t", $aFrom)."\n";
 		$sView .= ");";
@@ -561,8 +564,7 @@ class nglNest extends nglBranch {
 
 	public function createNestCodeFromTable() {
 		list($sObject) = $this->getarguments("entity", \func_get_args());
-		$db = $this->argument("db");
-		if($aDescribe = $db->describe($sObject)) {
+		if($aDescribe = $this->db->describe($sObject)) {
 			$sHash = self::call()->unique(8);
 
 			if(!\array_key_exists($sObject, $this->owl["tables"])) {
@@ -582,8 +584,8 @@ class nglNest extends nglBranch {
 				}
 				$aField["type"] = \strtoupper($aField["type"]);
 				$aField["default"] = (!empty($aField["default"])) ? $aField["default"] : "NONE";
-				$aField["attrs"] = (!empty($aField["attributes"])) ? \strtoupper($aField["attributes"]) : "--";
-				$aField["index"] = (!empty($aField["index"])) ? \strtoupper($aField["index"]) : "--";
+				$aField["attrs"] = (!empty($aField["attributes"])) ? \strtoupper($aField["attributes"]) : "";
+				$aField["index"] = (!empty($aField["index"])) ? \strtoupper($aField["index"]) : "";
 				$aField["null"] = $aField["nullable"]=="YES" ? true : false;
 				unset($aField["attributes"], $aField["nullable"], $aField["extra"]);
 
@@ -619,7 +621,7 @@ class nglNest extends nglBranch {
 
 	public function regenerate() {
 		$this->bRegenerate = true;
-		$bCore = $this->argument("core");
+		$bCore = $this->core;
 		$this->args("core", true);
 		$sCode = $this->generate(false);
 		$this->bRegenerate = false;
@@ -629,19 +631,14 @@ class nglNest extends nglBranch {
 
 	public function generate() {
 		list($bRun) = $this->getarguments("run", \func_get_args());
-		$db = $this->argument("db");
-		$bCreateStructure = $this->argument("core");
-		if($db===null) { self::errorMessage($this->object, 1009); } // undefined DB driver
+		if($this->db===null) { self::errorMessage($this->object, 1009); } // undefined DB driver
 
 		$aDbConfig = [];
-		$aDbConfig["debug"] = $db->debug;
-		$aDbConfig["insert_mode"] = $db->insert_mode;
-		$aDbConfig["check_colnames"] = $db->check_colnames;
-
-		$db->debug = true;
-		$db->insert_mode = "REPLACE";
-		$db->check_colnames = false;
-		$db->connect();
+		$aDbConfig["debug"] = $this->db->debug;
+		$aDbConfig["check_colnames"] = $this->db->check_colnames;
+		$this->db->debug = true;
+		$this->db->check_colnames = false;
+		$this->db->connect();
 
 		// automaticas
 		if(\is_array($this->aAutoNormalize) && \count($this->aAutoNormalize)) {
@@ -725,7 +722,7 @@ class nglNest extends nglBranch {
 		$sJSON = self::call("shift")->convert($aJSON, "array-json");
 
 		$sJSONCompact = self::call("shift")->jsonformat($sJSON, true);
-		if($this->bUpdate==false || $bCreateStructure) {
+		if($this->bUpdate==false || $this->core) {
 			$sSQLStructure = $this->CreateStructure();
 		} else {
 			$sSQLStructure = "";
@@ -734,8 +731,8 @@ class nglNest extends nglBranch {
 		// RENAME / DROP TABLE
 		if(\is_array($this->aAlterTable) && \count($this->aAlterTable)) {
 			foreach($this->aAlterTable as $sTable =>$aTable) {
-				if(isset($aTable["comment"])) { $sSQLStructure .= "ALTER TABLE `".$sTable."` COMMENT '".\addslashes($aTable["comment"])."';\n"; }
-				if(isset($aTable["rename"])) { $sSQLStructure .= "RENAME TABLE `".$sTable."` TO `".$aTable["rename"]."`;\n"; }
+				if(isset($aTable["comment"])) { $sSQLStructure .= $this->jsql->query(["query"=>"comment", "table"=>$sTable, "comment"=>$aTable["comment"]])."\n"; }
+				if(isset($aTable["rename"])) { $sSQLStructure .= $this->jsql->query(["query"=>"rename", "table"=>$sTable, "newname"=>$aTable["rename"]])."\n"; }
 			}
 		}
 
@@ -750,12 +747,16 @@ class nglNest extends nglBranch {
 		}
 		
 		if(\is_array($this->aStarred) && \count($this->aStarred)) {
+			// TODO: indices de texto completo, y borrado de indice. llevar a la clase del controlador
+			/*
 			$sSQLStructure .= "-- STARRED FIELDS --\n";
 			foreach($this->aStarred as $sStarred => $w) {
-				$sFullTextFields = "`".\implode("`, `", $this->owl["nest"]["objects"][$sStarred]["starred"])."`";
+				$aFullTextFields = \array_map([$db,"quote"], $this->owl["nest"]["objects"][$sStarred]["starred"]);
+				$sFullTextFields = \implode(",", $aFullTextFields);
 				$sSQLStructure .= "CALL func.drop_index(DATABASE(), '".$sStarred."', 'globalsearch');\n";
-				$sSQLStructure .= "ALTER TABLE `".$sStarred."` ADD FULLTEXT INDEX `globalsearch` (".$sFullTextFields.");\n\n";
+				$sSQLStructure .= "ALTER TABLE ".$this->db->quote($sStarred)." ADD FULLTEXT INDEX ".$this->db->quote("globalsearch")." (".$sFullTextFields.");\n\n";
 			}
+			*/
 		}
 
 		if(!$this->bRegenerate) {
@@ -763,7 +764,7 @@ class nglNest extends nglBranch {
 				$sSQLStructure .= "\n-- -----------------------------------------------------------------------------\n\n";
 				$sSQLStructure .= "-- NORMALIZE --\n";
 				foreach($this->aNormalize as $sNewObject => $aNormalize) {
-					$sSQLStructure .= "-- `".$aNormalize[0]."`.`".$aNormalize[1]."` TO `".$sNewObject."` --\n";
+					$sSQLStructure .= "--".$aNormalize[0].".".$aNormalize[1]." TO ".$sNewObject." --\n";
 				}
 			}
 
@@ -771,49 +772,50 @@ class nglNest extends nglBranch {
 				$sSQLStructure .= "\n-- -----------------------------------------------------------------------------\n\n";
 				$sSQLStructure .= "-- LOAD DATA FROM FILES --\n";
 				foreach($this->aLoadDataIndex as $sLoadDataIndexName => $sLoadDataIndexFile) {
-					$sSQLStructure .= "-- ".$sLoadDataIndexFile." INTO `".$sLoadDataIndexName."` --\n";
+					$sSQLStructure .= "-- ".$sLoadDataIndexFile." INTO ".$sLoadDataIndexName." --\n";
 				}
 			}
 		}
 		
 		// ESTRUCTURA
-		$sJSONCompact = $db->escape($sJSONCompact);
+		$sJSONCompact = $this->db->escape($sJSONCompact);
+		$sOwlBackup = "owl_".\date("YmdHis");
 		$sSQL = "\n-- -----------------------------------------------------------------------------\n\n";
-		$sSQL .= "-- SAVE OWL STRUCTURE ON `__ngl_sentences__` --\n";
-		$sSQL .= "REPLACE INTO `__ngl_sentences__` SELECT CONCAT('owl_', DATE_FORMAT(NOW(), '%Y%m%d%H%i%s')) AS 'name', 'structure' AS 'type', `sentence`, `dependencies`, `notes` FROM `__ngl_sentences__` WHERE `name` = 'owl';\n";
-		$sSQL .= $db->insert("__ngl_sentences__", ["name"=>"owl", "type"=>"structure", "sentence"=>$sJSONCompact]).";\n";
+		$sSQL .= "-- SAVE OWL STRUCTURE ON __ngl_sentences__ --\n";
+		$sSQL .= "INSERT INTO ".$this->db->quote("__ngl_sentences__")." SELECT '".$sOwlBackup."' AS ".$this->db->quote("name").", 'structure' AS ".$this->db->quote("type").", ".$this->db->quote("sentence").", ".$this->db->quote("dependencies").", ".$this->db->quote("notes")." FROM ".$this->db->quote("__ngl_sentences__")." WHERE ".$this->db->quote("name")." = 'owl';\n";
+		$sSQL .= $this->db->replace("__ngl_sentences__", ["name"=>"owl", "type"=>"structure", "sentence"=>$sJSONCompact]).";\n";
 		$sSQL .= "\n\n";
 
-		$sSQL .= "-- EMPTIES THE TABLE `__ngl_owl_structure__`;\n";
-		$sSQL .= "TRUNCATE TABLE `__ngl_owl_structure__`;\n\n";
+		$sSQL .= "-- EMPTIES THE TABLE __ngl_owl_structure__ --\n";
+		$sSQL .= "TRUNCATE TABLE ".$this->db->quote("__ngl_owl_structure__").";\n\n";
 		
 		// COLUMNAS
 		$sSQL .= "-- BEGIN COLUMNS --\n";
 		if(isset($aOWL["tables"])) {
 			foreach($aOWL["tables"] as $sTable => $aColumns) {
 				$sColumns = '["'.\implode('","', \array_keys($aColumns)).'"]';
-				$sColumns = $db->escape($sColumns);
+				$sColumns = $this->db->escape($sColumns);
 				$sCode = \substr(self::call()->strimya($sTable), 0, 12);
 				$nRoles = (\array_key_exists("roles", $this->owl["nest"]["objects"][$sTable])) ? $this->owl["nest"]["objects"][$sTable]["roles"] : "0";
-				$sSQL .= $db->insert("__ngl_owl_structure__", ["name"=>$sTable, "code"=>$sCode, "roles"=>$nRoles, "columns"=>$sColumns]).";\n";
+				$sSQL .= $this->db->replace("__ngl_owl_structure__", ["name"=>$sTable, "code"=>$sCode, "roles"=>$nRoles, "columns"=>$sColumns]).";\n";
 			}
 		}
 		if(isset($aOWL["foreigns"])) {
 			foreach($aOWL["foreigns"] as $sTable => $aView) {
 				$aColumns = \array_keys($aView["fields"]);
 				$sColumns = '["'.\implode('","', $aColumns).'"]';
-				$sColumns = $db->escape($sColumns);
+				$sColumns = $this->db->escape($sColumns);
 				$sCode = \substr(self::call()->strimya($sTable), 0, 12);
-				$sSQL .= $db->insert("__ngl_owl_structure__", ["name"=>$sTable, "code"=>$sCode, "columns"=>$sColumns]).";\n";
+				$sSQL .= $this->db->replace("__ngl_owl_structure__", ["name"=>$sTable, "code"=>$sCode, "columns"=>$sColumns]).";\n";
 			}
 		}
 		if(isset($aOWL["views"])) {
 			foreach($aOWL["views"] as $sTable => $aView) {
 				$aColumns = \array_keys($aView["fields"]);
 				$sColumns = '["'.\implode('","', $aColumns).'"]';
-				$sColumns = $db->escape($sColumns);
+				$sColumns = $this->db->escape($sColumns);
 				$sCode = \substr(self::call()->strimya($sTable), 0, 12);
-				$sSQL .= $db->insert("__ngl_owl_structure__", ["name"=>$sTable, "code"=>$sCode, "columns"=>$sColumns]).";\n";
+				$sSQL .= $this->db->replace("__ngl_owl_structure__", ["name"=>$sTable, "code"=>$sCode, "columns"=>$sColumns]).";\n";
 			}
 		}
 		$sSQL .= "-- END COLUMNS --\n\n";
@@ -834,8 +836,8 @@ class nglNest extends nglBranch {
 				$aForeignkeys["fields"] = \array_values($aForeignkeys["fields"]);
 				$sForeignkeys = \json_encode($aForeignkeys);
 		
-				$sForeignkeys = $db->escape($sForeignkeys);
-				$sSQL .= $db->update("__ngl_owl_structure__", ["foreignkey"=>$sForeignkeys], "`name`='".$sTable."'").";\n";
+				$sForeignkeys = $this->db->escape($sForeignkeys);
+				$sSQL .= $this->db->update("__ngl_owl_structure__", ["foreignkey"=>$sForeignkeys], "name='".$sTable."'").";\n";
 			}
 			$sSQL .= "-- END FOREIGNKEYS --\n\n";
 		}
@@ -872,8 +874,8 @@ class nglNest extends nglBranch {
 				if(!\count($aJoin["joins"])) { unset($aJoin["joins"]); }
 				if(!\count($aJoin["children"])) { unset($aJoin["children"]); }
 				$sJoins = \json_encode($aJoin);
-				$sJoins = $db->escape($sJoins);
-				$sSQL .= $db->update("__ngl_owl_structure__", ["relationship"=>$sJoins], "`name`='".$sTable."'").";\n";
+				$sJoins = $this->db->escape($sJoins);
+				$sSQL .= $this->db->update("__ngl_owl_structure__", ["relationship"=>$sJoins], "name='".$sTable."'").";\n";
 			}
 			$sSQL .= "-- END JOINS-CHILDREN --\n\n";
 		}
@@ -902,25 +904,23 @@ class nglNest extends nglBranch {
 				}
 		
 				$sValidator = \json_encode($aValidator);
-				$sValidator = $db->escape($sValidator);
-				$sSQL .= $db->update("__ngl_owl_structure__", ["validate_insert"=>$sValidator], "`name`='".$sTable."'").";\n";
-				$sSQL .= $db->update("__ngl_owl_structure__", ["validate_update"=>$sValidator], "`name`='".$sTable."'").";\n";
+				$sValidator = $this->db->escape($sValidator);
+				$sSQL .= $this->db->update("__ngl_owl_structure__", ["validate_insert"=>$sValidator], "name='".$sTable."'").";\n";
+				$sSQL .= $this->db->update("__ngl_owl_structure__", ["validate_update"=>$sValidator], "name='".$sTable."'").";\n";
 			}
 			$sSQL .= "-- END VALIDATOR --\n";
 		}
 
-		$db->debug = $aDbConfig["debug"];
-		$db->insert_mode = $aDbConfig["insert_mode"];
-		$db->check_colnames = $aDbConfig["check_colnames"];
-
-		$this->attribute("sql", "use `".$this->db->base."`;\n\n".$sSQLStructure."\n\n".$sSQL);
+		$this->db->debug = $aDbConfig["debug"];
+		$this->db->check_colnames = $aDbConfig["check_colnames"];
+		$this->attribute("sql", $sSQLStructure."\n\n".$sSQL);
 
 		if($bRun) {
-			$db->mquery($this->attribute("sql"));
+			$this->db->mquery($this->attribute("sql"));
 
 			// carga de datos del createfromfile
 			if(\is_array($this->aLoadData) && \count($this->aLoadData)) {
-				$owl = self::call("owl")->connect($db);
+				$owl = self::call("owl")->connect($this->db);
 				foreach($this->aLoadData as $sObjectToLoad => $aLoadData) {
 					$owl->select($sObjectToLoad);
 					$nCols = \count($aLoadData["fields"]);
@@ -935,17 +935,17 @@ class nglNest extends nglBranch {
 
 			// normalizaciones
 			if(\is_array($this->aNormalize) && \count($this->aNormalize)) {
-				$owl = self::call("owl")->connect($db);
+				$owl = self::call("owl")->connect($this->db);
 				$sSQL .= "-- BEGIN NORMALIZATION --\n";
 				foreach($this->aNormalize as $sNewObject => $aNormalize) {
 					if(isset($this->aAutoNormalize[$sNewObject])) { continue; }
-					$vals = $db->query("SELECT DISTINCT `".$aNormalize[1]."_".$aNormalize[2]."` FROM `".$aNormalize[0]."` ORDER BY 1");
+					$vals = $this->db->query("SELECT DISTINCT ".$this->db->quote($aNormalize[1]."_".$aNormalize[2])." FROM ".$this->db->quote($aNormalize[0])." ORDER BY 1");
 					if($vals->rows()) {
 						$owl->select($sNewObject);
 						while($sVal = $vals->get($aNormalize[1]."_".$aNormalize[2])) {
 							$nId = $owl->insert(["nombre"=>$sVal]);
-							$sSQLUpdate = "UPDATE `".$aNormalize[0]."` SET `".$aNormalize[1]."` = '".$nId."' WHERE `".$aNormalize[1]."_".$aNormalize[2]."` = '".$sVal."'";
-							$db->query($sSQLUpdate);
+							$sSQLUpdate = "UPDATE ".$this->db->quote($aNormalize[0])." SET ".$this->db->quote($aNormalize[1])." = '".$nId."' WHERE ".$this->db->quote($aNormalize[1]."_".$aNormalize[2])." = '".$sVal."'";
+							$this->db->query($sSQLUpdate);
 							$sSQL .= $sSQLUpdate."\n";
 						}
 					}
@@ -955,7 +955,7 @@ class nglNest extends nglBranch {
 
 			return "ok";
 		} else {
-			return \utf8_encode($this->attribute("sql"));
+			return $this->attribute("sql");
 		}
 	}
 
@@ -1006,15 +1006,25 @@ class nglNest extends nglBranch {
 		if(\is_array($mStructure)) {
 			$aStructure = $mStructure;
 		} else if(\is_string($mStructure)) {
-			if($db->query("SHOW TABLES LIKE '__ngl_sentences__'")->rows()) {
+			if(\count($this->db->tables("__ngl_sentences__"))) {
 				if(\strtolower(\substr($mStructure,0,3))=="owl") {
 					$mStructure = \preg_replace("/[^owl_0-9]/", "", $mStructure);
-					$sentence = $db->query("SELECT `sentence` FROM `__ngl_sentences__` WHERE `name` = '".$mStructure."'");
+					$sentence = $this->jsql->query([
+						"query" => "select",
+						"columns" => [["sentence"]],
+						"tables" =>["__ngl_sentences__"],
+						"where" => [["[name]", "eq", $mStructure]]
+					], true);
 					if($sentence && $sentence->rows()) {
 						$mStructure = $sentence->get("sentence");
 						$aStructure = \json_decode($mStructure, true);
 					} else if($mStructure!="owl") {
-						$sentence = $db->query("SELECT `sentence` FROM `__ngl_sentences__` WHERE `name` = 'owl'");
+						$sentence = $this->jsql->query([
+							"query" => "select",
+							"columns" => [["sentence"]],
+							"tables" =>["__ngl_sentences__"],
+							"where" => [["[name]", "eq", "owl"]]
+						], true);
 						if($sentence && $sentence->rows()) {
 							$mStructure = $sentence->get("sentence");
 							$aStructure = \json_decode($mStructure, true);
@@ -1391,39 +1401,20 @@ class nglNest extends nglBranch {
 
 	private function ViewFields() {
 		list($sObject) = $this->getarguments("entity", \func_get_args());
-		$sObject = $this->FormatName($sObject);
-		$db = $this->argument("db");
-		$sName = "_tmpviewfields_".self::call()->unique(8);
-		$db->query("CREATE TEMPORARY TABLE `".$sName."` SELECT * FROM `".$sObject."` ORDER BY RAND() LIMIT 30");
-		$aFields = $db->query("DESCRIBE `".$sName."`")->getall();
-		$db->query("DROP TEMPORARY TABLE `".$sName."`");
-		$aView = [];
-		foreach($aFields as $aField) {
-			$sType = \substr($aField["Type"], 0, \strpos($aField["Type"], ")"));
-			$aType = \explode("(", $sType);
-			$aView[$aField["Field"]] = [
-				"name" => $aField["Field"],
-				"label" => \ucfirst(\str_replace("_", " ", \strtolower($aField["Field"]))),
-				"type" => $aType[0],
-				"length" => $aType[1]
-			];
-		}
-
-		return $aView;
+		return $this->db->describeView($sObject);
 	}
 
 	private function ForeignTableFields() {
 		list($sObject) = $this->getarguments("entity", \func_get_args());
 		$sObject = $this->FormatName($sObject);
-		$db = $this->argument("db");
-		$aFields = $db->query("DESCRIBE `".$sObject."`")->getall();
+		$aFields = $this->db->describe($sObject);
 		$aForeign = [];
 		foreach($aFields as $aField) {
-			$sType = \substr($aField["Type"], 0, \strpos($aField["Type"], ")"));
+			$sType = \substr($aField["type"], 0, \strpos($aField["type"], ")"));
 			$aType = \explode("(", $sType);
-			$aForeign[$aField["Field"]] = [
-				"name" => $aField["Field"],
-				"label" => \ucfirst(\str_replace("_", " ", \strtolower($aField["Field"]))),
+			$aForeign[$aField["name"]] = [
+				"name" => $aField["name"],
+				"label" => \ucfirst(\str_replace("_", " ", \strtolower($aField["name"]))),
 				"type" => $aType[0],
 				"length" => $aType[1]
 			];
@@ -1462,13 +1453,10 @@ class nglNest extends nglBranch {
 
 			case "txt":
 			case "csv":
-				$sEnclosed = $this->argument("enclosed");
-				$sSplitter = $this->argument("splitter");
-				$sEOL = $this->argument("eol");
 				$nIni = 1;
 				$csv = self::call("file")->load($sFilePath);
 				$sData = $csv->read();
-				$aData = self::call("shift")->convert($sData, "csv-array", ["enclosed"=>$sEnclosed, "splitter"=>$sSplitter, "eol"=>$sEOL]);
+				$aData = self::call("shift")->convert($sData, "csv-array", ["enclosed"=>$this->enclosed, "splitter"=>$this->splitter, "eol"=>$this->eol]);
 				$aGetColumns = $aData[0];
 				break;
 		}
@@ -1479,7 +1467,7 @@ class nglNest extends nglBranch {
 			$sFieldName = $this->FormatName($sColumn);
 			if($sFieldName=="") { break; }
 			$aFields[] = $sFieldName;
-			$aColumns[$sFieldName] = ["label"=>$sColumn, "alias"=>"text", "default"=>"NULL", "null"=>true];
+			$aColumns[$sFieldName] = ["label"=>$sColumn, "alias"=>"text", "null"=>true];
 		}
 
 		$this->aLoadData[$sObject] = ["data"=>$aData, "fields"=>$aFields];
@@ -1528,12 +1516,9 @@ class nglNest extends nglBranch {
 		$sObject = $this->attribute("object");
 		$sField = $this->FormatName($sField);
 		$sNewObject = $this->FormatName($sNewObject);
-
-		$sCodeField = $this->argument("normalize_code");
-		$sNameField = $this->argument("normalize_name");
 		$aColumns = [
-			"code" => ["alias"=>"code", "label"=>$sCodeField],
-			"nombre" => ["alias"=>"name", "label"=>$sNameField]
+			"code" => ["alias"=>"code", "label"=>$this->normalize_code],
+			"nombre" => ["alias"=>"name", "label"=>$this->normalize_name]
 		];
 		$create = $this->create($sNewObject, $sTitle, $aColumns);
 
@@ -1592,65 +1577,51 @@ class nglNest extends nglBranch {
 
 	private function CreateStructure() {
 		$sSQL = self::call("owl")->connect($this->db)->dbStructure();
-		$sSQL .= <<<SQL
 
--- sentences --
-DROP TABLE IF EXISTS `__ngl_sentences__`;
-CREATE TABLE `__ngl_sentences__` (
-	`name` VARCHAR(128) NOT NULL DEFAULT '',
-	`type` ENUM('function','procedure','query','structure','trigger','view') NOT NULL COMMENT 'tipo de sentencia',
-	`sentence` MEDIUMTEXT NOT NULL COMMENT 'sentencia SQL',
-	`dependencies` MEDIUMTEXT NULL COMMENT 'nombre de tablas/views separados por coma, de las cuales depende la sentencia',
-	`notes` VARCHAR(255) NULL,
-	PRIMARY KEY (`name`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Almacena sentencias SQL utilizadas en el proyecto. Esta tabla es fundamental para el funcionamiento de NEST';
-
--- PROJECT ENTITIES ------------------------------------------------------------\n
-SQL;
-
-		return $sSQL;
+		$sSQL .= "\n\n".$this->jsql->query(<<<SQL
+{
+	"query": "create",
+	"table" : "__ngl_sentences__",
+	"comment" : "Almacena sentencias SQL utilizadas en el proyecto. Esta tabla es fundamental para el funcionamiento de NEST",
+	"columns" : [
+		{"name":"name", "type":"VARCHAR", "length":"128", "index":"PRIMARY"},
+		{"name":"type", "type":"ENUM", "length":"'function','procedure','query','structure','trigger','view'", "default":"'query'", "comment":"tipo de sentencia"},
+		{"name":"sentence", "type":"MEDIUMTEXT", "comment":"sentencia SQL"},
+		{"name":"dependencies", "type":"MEDIUMTEXT", "null":"true", "comment":"nombre de tablas/views separados por coma, de las cuales depende la sentencia"},
+		{"name":"notes", "type":"VARCHAR", "length":"255", "null":"true"}
+	]
+}
+SQL);
+		return $sSQL."\n\n-- PROJECT ENTITIES ------------------------------------------------------------\n";
 	}
 
 	private function CreateTableStructure($sTable, $aTableFields, $bCreate=false) {
 		$aFields = $aAlter = $aIndex = $aIndexAlter = [];
 
+		foreach($aTableFields as $sField => &$aField) {
+			$aField["name"] = $sField;
+		}
+
 		if($this->bUpdate==false || isset($this->aAdd[$sTable]) || isset($this->aAlterField[$sTable]) || $bCreate) {
-			$aIndex[] = "CREATE UNIQUE INDEX `imya` ON `".$sTable."` (`imya`);";
-			$aIndex[] = "CREATE INDEX `state` ON `".$sTable."` (`state`);";
-
-			$sLastField = "state";
-			foreach($aTableFields as $sField => $aField) {
-				if($sField=="pid") {
-					$aFields = \array_reverse($aFields, true);
-					$aFields["pid"] = "`pid` INT UNSIGNED NOT NULL";
-					$aFields = \array_reverse($aFields, true);
-					$aIndex[] = "CREATE INDEX `pid` ON `".$sTable."` (`pid`);";
-					continue;
-				}
-
-				$bAdd = isset($this->aAdd[$sTable]);
-				$aFields[$sField] = $this->FieldDef($sField, $aField, $bAdd);
-				if($aField["index"]!="--") {
-					$sIndex = ($aField["index"]!="INDEX") ? $aField["index"]." " : "";
-					$aIndex[] = $aIndexAlter[$sField] = "CREATE ".$sIndex."INDEX `".$sField."` ON `".$sTable."` (`".$sField."`);";
-				}
-
-				$sLastField = $sField;
-			}
+			if(\array_key_exists("pid", $aTableFields)) { $aTableFields["pid"] = ["name"=>"pid", "type"=>"INT", "null"=>"true", "index"=>"INDEX"]; }
+			\array_unshift($aTableFields, 
+				["name"=>"id", "type"=>"INT", "index"=>"PRIMARY", "autoinc"=>"true"],
+				["name"=>"imya", "type"=>"CHAR", "length"=>"32", "index"=>"UNIQUE"],
+				["name"=>"state", "type"=>"ENUM", "length"=>"'0','1'", "default"=>"'1'", "null"=>true, "comment"=>"NULL=eliminado, 0=inactivo, 1=activo"]
+			);
 		}
 
 		$sSQLStructure = "";
 		if($this->bUpdate==false || isset($this->aAdd[$sTable]) || $bCreate) {
 			$sSQLStructure .= "-- ".$sTable." --\n";
-			$sSQLStructure .= "DROP TABLE IF EXISTS `".$sTable."`;\n";
-			$sSQLStructure .= "CREATE TABLE `".$sTable."` (\n";
-			$sSQLStructure .= "\t`id` INT UNSIGNED PRIMARY KEY AUTO_INCREMENT NOT NULL,\n";
-			$sSQLStructure .= "\t`imya` CHAR(32) NOT NULL DEFAULT '',\n";
-			$sSQLStructure .= "\t`state` ENUM('0', '1') NULL DEFAULT '1' COMMENT 'NULL=eliminado, 0=inactivo, 1=activo',\n";
-			$sSQLStructure .= "\t".\implode(",\n\t", $aFields);
-			$sSQLStructure .= "\n) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
-			if(!empty($this->owl["nest"]["objects"][$sTable]["comment"])) { $sSQLStructure .= " COMMENT '".\addslashes($this->owl["nest"]["objects"][$sTable]["comment"])."'";	}
-			$sSQLStructure .= ";\n";
+			$sSQLStructure .= $this->jsql->query([
+				"query" => "create",
+				"table" => $sTable,
+				"drop" => true,
+				"comment" => (!empty($this->owl["nest"]["objects"][$sTable]["comment"]) ? \addslashes($this->owl["nest"]["objects"][$sTable]["comment"]) : ""),
+				"columns" => $aTableFields
+			]);
+			$sSQLStructure .= "\n";
 
 			if(\is_array($aIndex) && \count($aIndex)) { $sSQLStructure .= \implode("\n", $aIndex)."\n"; }
 			$sSQLStructure .= "\n";
@@ -1661,23 +1632,25 @@ SQL;
 			foreach($this->aAlterField[$sTable] as $sField => $aAfters) {
 				foreach($aAfters as $sAfter) {
 					if($sField=="pid" && $sAfter!=="@DROP") {
-						$aIndex[] = "ALTER TABLE `".$sTable."` ADD INDEX (`pid`);";
+						$aIndex[] = $this->jsql->query(["query"=>"index", "table"=>$sTable, "column"=>"pid"]);
 					}
 					if($sAfter==="@DROP") {
-						$sSQLStructure .= "ALTER TABLE `".$sTable."` DROP COLUMN `".$sField."`;\n";
-					} else if($sAfter==="@MODIFY" || $sAfter==="@CHANGE") {
-						$sSQLStructure .= "ALTER TABLE `".$sTable."` ".\substr($sAfter, 1)." COLUMN ".$aFields[$sField].";\n";
+						$sSQLStructure .= $this->jsql->query(["query"=>"coldrop", "table"=>$sTable, "column"=>$sField])."\n";
+					} else if($sAfter==="@MODIFY") {
+						$sSQLStructure .= $this->jsql->query(["query"=>"colmodify", "table"=>$sTable, "column"=>$aTableFields[$sField]])."\n";
+					} else if($sAfter==="@CHANGE") {
+						$sSQLStructure .= $this->jsql->query(["query"=>"colrename", "table"=>$sTable, "column"=>$aTableFields[$sField]])."\n";
 					} else {
-						$sAfter = ($sAfter!==true) ? " AFTER `".$sAfter."`" : "";
-						$sSQLStructure .= "ALTER TABLE `".$sTable."` ADD COLUMN ".$aFields[$sField].$sAfter.";\n";
+						if($sAfter!==true) { $aFields[$sField]["after"] = $sAfter; }
+						$sSQLStructure .= $this->jsql->query(["query"=>"coladd", "table"=>$sTable, "column"=>$aTableFields[$sField]])."\n";
 					}
 				}
-
-				if(isset($aTableFields[$sField]["oldname"]) && $aTableFields[$sField]["oldindex"]!="--") {
-					$aIndex[] = "DROP INDEX `".$aTableFields[$sField]["oldname"]."` ON `".$sTable."`;";
+				
+				if(isset($aTableFields[$sField]["oldname"]) && !empty($aTableFields[$sField]["oldindex"])) {
+					$aIndex[] = $this->jsql->query(["query"=>"indexdrop", "table"=>$sTable, "column"=>$aTableFields[$sField]["oldname"]])."\n";
 				}
 
-				if(isset($aIndexAlter[$sField])) {
+				if(!empty($aIndexAlter[$sField])) {
 					$aIndex[] = $aIndexAlter[$sField];
 				}
 			}
@@ -1742,7 +1715,7 @@ SQL;
 		$aColumns = (isset($this->owl["tables"][$sTable])) ? $this->owl["tables"][$sTable] : (isset($this->owl["views"][$sTable]) ? $this->owl["views"][$sTable]["fields"] : []);
 		$aDescribe = [];
 		foreach($aColumns as $sColumn => $sLabel) {
-			$aDescribe[] = "`".$sAlias."`.`".$sColumn."` AS '".$sAlias."_".$sColumn."'";
+			$aDescribe[] = $this->db->quote($sAlias).".".$this->db->quote($sColumn)." AS '".$sAlias."_".$sColumn."'";
 		}
 		return $aDescribe;
 	}
@@ -1773,18 +1746,9 @@ SQL;
 		return \ucwords($sName);
 	}
 
-	private function FieldDef($sField, $aField, $bAdd=false) {
-		$sOldName = (isset($aField["oldname"]) && $aField["oldname"]!=$sField && !$bAdd) ? "`".$aField["oldname"]."` " : "";
-		$sNameType = $sOldName."`".$sField."` ".$aField["type"];
-		$nLength = (!empty($aField["length"])) ? "(".$aField["length"].")" : "";
-		$sAttribs = ($aField["attrs"]!="--") ? $aField["attrs"] : "";
-		$sNull = (!isset($aField["null"]) || $aField["null"]===false) ? "NOT NULL" : "NULL";
-		$sDefault = "";
-		if($aField["default"]!="NONE" && $aField["default"]!="'NONE'") {
-			$sDefault = "DEFAULT ".$aField["default"];
-		}
-		$sComments = !empty($aField["comment"]) ? "COMMENT '".\addslashes($aField["comment"])."'" : "";
-		return $sNameType." ".$nLength." ".$sAttribs." ".$sNull." ".$sDefault." ".$sComments;
+	protected function SetBase($db) {
+		$this->jsql = $db->jsql();
+		return $db;
 	}
 
 	protected function SetObject($sObject) {
